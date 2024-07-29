@@ -34,13 +34,13 @@ export default function UserMng() {
     <div className="flex justify-between items-center mb-4">
       <h1 className="text-2xl font-bold">User Management</h1>
       <div className="flex space-x-2">
-        <button className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700">
+        <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">
           추가
         </button>
-        <button className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-700">
+        <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">
           삭제
         </button>
-        <button className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-700">
+        <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">
           저장
         </button>
       </div>

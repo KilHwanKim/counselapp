@@ -29,6 +29,9 @@ const Table = ({ columns, data }) => {
         <thead>
           {headerGroups.map(headerGroup => (
             <tr {...headerGroup.getHeaderGroupProps()}>
+              <th className="px-1 py-2 border-b border-gray-200 bg-gray-100 text-left text-sm font-medium text-gray-900">
+                상태
+              </th>
               {headerGroup.headers.map(column => (
                 <th
                   {...column.getHeaderProps()}
@@ -37,9 +40,7 @@ const Table = ({ columns, data }) => {
                   {column.render('Header')}
                 </th>
               ))}
-              <th className="px-4 py-2 border-b border-gray-200 bg-gray-100 text-left text-sm font-medium text-gray-900">
-                Status
-              </th>
+
             </tr>
           ))}
         </thead>
@@ -49,7 +50,7 @@ const Table = ({ columns, data }) => {
             return (
               <tr {...row.getRowProps()} className="even:bg-gray-50">
                                 <td
-                  className={`px-4 py-2 border-b border-gray-200 text-sm ${getStatusStyle(row.original.status)}`}
+                  className={`px-1 py-2 border-b border-gray-200 text-sm ${getStatusStyle(row.original.status)}`}
                 >
                   {row.original.status}
                 </td>
