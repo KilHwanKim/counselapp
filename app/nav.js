@@ -6,7 +6,7 @@ export default function Navbar() {
     <nav className="bg-gray-800 p-4">
       <ul className="flex space-x-4">
         <li>
-          <Link href="/" className="text-white hover:text-gray-400">
+          <Link href="/user" className="text-white hover:text-gray-400">
             사용자 관리
           </Link>
         </li>
