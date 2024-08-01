@@ -35,9 +35,8 @@ export default function UserMng() {
   ];
   
 
-  const createInsertRow = () => {
-    
-    return { id: "test", username: "test", age: 1 };
+  const createInsertRow = (prevRows) => {
+    return { id: prevRows.length+1, firstName: "test", age: 1 };
   };
 
   const [data, setData] = React.useState(() => [
@@ -53,7 +52,7 @@ export default function UserMng() {
   ]);
 
   const handleAddRow = () => {
-    setData((prevRows) => [...prevRows, createInsertRow()]);
+    setData((prevRows) => [...prevRows, createInsertRow(prevRows)]);
   };
   
   return (
