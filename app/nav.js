@@ -16,7 +16,7 @@ export default function Navbar() {
           </Link>
         </li>
         <li>
-          <Link href="/page2" className="text-white hover:text-gray-400">
+          <Link href="/class" className="text-white hover:text-gray-400">
             수업 관리
           </Link>
         </li>
