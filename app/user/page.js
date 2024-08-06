@@ -34,8 +34,12 @@ export default function UserMng() {
     },
   ];
   
+  //선택된 첵크박스
+  const [rowSelectionModel, setRowSelectionModel] =
+  React.useState<GridRowSelectionModel>([]);
 
   const createInsertRow = (prevRows) => {
+    
     return { id: prevRows.length+1, firstName: "test", age: 1 };
   };
 
@@ -63,7 +67,7 @@ export default function UserMng() {
         <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"  onClick={handleAddRow}>
           추가
         </button>
-        <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">
+        <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700" >
           삭제
         </button>
         <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700">
@@ -87,6 +91,7 @@ export default function UserMng() {
         pageSizeOptions={[30]}
         checkboxSelection
         disableRowSelectionOnClick
+        rowSelectionModel={rowSelectionModel}
       />
 
 

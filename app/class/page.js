@@ -1,6 +1,5 @@
 import { connectDB } from "@/util/database";
-import Image from "next/image";
-import ClassGrid from "./classGrid";
+import ClassGrid from "./classgrid";
 
 
 export default async function Home() {
