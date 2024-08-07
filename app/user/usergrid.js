@@ -1,5 +1,5 @@
 'use client'
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import { DataGrid, GridRowEditStopReasons} from '@mui/x-data-grid';
 import { v4 as uuidv4 } from 'uuid';
@@ -48,6 +48,7 @@ export default function UserGrid(props) {
   const processRowUpdate = (newRow) => {
     const updatedRow = { ...newRow, isNew: false };
     setData(data.map((row) => (row.id === newRow.id ? updatedRow : row)));
+    
     return updatedRow;
   };
 
@@ -67,6 +68,12 @@ export default function UserGrid(props) {
     };
     setData((prevData) => [...prevData, newRow]);
   };
+  //수정중이던 그리드가 저장되게
+  const handleCellEditCommit = useCallback((params) => {
+    setData((prevData) =>
+      prevData.map((row) => (row.id === params.id ? { ...row, [params.field]: params.value } : row))
+    );
+  }, []);
 
 
   const handleSave = () => {
@@ -92,16 +99,12 @@ export default function UserGrid(props) {
           </button>
         </div>
       </div>
-
+      
       {/* 그리드 영역 */}
       <Box sx={{ height: '90%', width: '100%' }}>
         <DataGrid
           rows={data}
-          editMode="row"
-          rowModesModel={rowModesModel}
-          onRowModesModelChange={handleRowModesModelChange}
-          onRowEditStop={handleRowEditStop}
-          processRowUpdate={processRowUpdate}
+ 
           columns={columns}
           initialState={{
             pagination: {
