@@ -76,7 +76,7 @@ export default function UserGrid(props) {
   }, []);
 
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // 데이터 저장 로직 추가
     console.log('저장된 데이터:', data);
     // 실제로는 서버에 저장하는 API 호출 등을 여기에 추가

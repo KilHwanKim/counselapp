@@ -26,43 +26,7 @@ const randomRole = () => {
   return randomArrayItem(roles);
 };
 
-const initialRows = [
-  {
-    id: 1,
-    name: 1,
-    age: 25,
-    joinDate:'',
-    role: 'test',
-  },
-  {
-    id: randomId(),
-    name: randomTraderName(),
-    age: 36,
-    joinDate: randomCreatedDate(),
-    role: randomRole(),
-  },
-  {
-    id: randomId(),
-    name: randomTraderName(),
-    age: 19,
-    joinDate: randomCreatedDate(),
-    role: randomRole(),
-  },
-  {
-    id: randomId(),
-    name: randomTraderName(),
-    age: 28,
-    joinDate: randomCreatedDate(),
-    role: randomRole(),
-  },
-  {
-    id: randomId(),
-    name: randomTraderName(),
-    age: 23,
-    joinDate: randomCreatedDate(),
-    role: randomRole(),
-  },
-];
+
 
 function EditToolbar(props) {
   const { setRows, setRowModesModel } = props;
@@ -85,9 +49,12 @@ function EditToolbar(props) {
   );
 }
 
-export default function FullFeaturedCrudGrid() {
+export default function FullFeaturedCrudGrid(props) {
+  
+  const initialRows = props.userList
   const [rows, setRows] = React.useState(initialRows);
   const [rowModesModel, setRowModesModel] = React.useState({});
+  const [updatedRows, setUpdatedRows] = React.useState([]); // 추적할 수정된 데이터
 
   const handleRowEditStop = (params, event) => {
     if (params.reason === GridRowEditStopReasons.rowFocusOut) {
@@ -99,12 +66,29 @@ export default function FullFeaturedCrudGrid() {
     setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.Edit } });
   };
 
-  const handleSaveClick = (id) => () => {
+  // const handleSaveClick = (id) => () => {
+  //   setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
+  //   console.log("테스트");
+  //   console.log(rows);
+  // };
+
+
+  const handleSaveClick = (id) => async () => {
     setRowModesModel({ ...rowModesModel, [id]: { mode: GridRowModes.View } });
+
+    // AJAX 요청을 통해 서버에 데이터 저장
+    try {
+      await saveUpdatedRows(); // saveUpdatedRows 함수를 통해 데이터 저장
+      alert('데이터가 성공적으로 저장되었습니다.');
+    } catch (error) {
+      console.error('데이터 저장 중 오류 발생:', error);
+      alert('데이터 저장 중 오류가 발생했습니다.');
+    }
   };
 
   const handleDeleteClick = (id) => () => {
     setRows(rows.filter((row) => row.id !== id));
+    console.log(id);
   };
 
   const handleCancelClick = (id) => () => {
@@ -119,41 +103,88 @@ export default function FullFeaturedCrudGrid() {
     }
   };
 
+  // const processRowUpdate = (newRow) => {
+  //   const updatedRow = { ...newRow, isNew: false };
+  //   setRows(rows.map((row) => (row.id === newRow.id ? updatedRow : row)));
+  //   console.log(rows);
+  //   return updatedRow;
+  // };
+
   const processRowUpdate = (newRow) => {
     const updatedRow = { ...newRow, isNew: false };
     setRows(rows.map((row) => (row.id === newRow.id ? updatedRow : row)));
+
+    // 수정된 데이터를 추적
+    setUpdatedRows((prevUpdatedRows) => {
+      const existingRowIndex = prevUpdatedRows.findIndex((row) => row.id === newRow.id);
+      if (existingRowIndex >= 0) {
+        // 이미 수정된 데이터가 있으면 덮어쓰기
+        const newUpdatedRows = [...prevUpdatedRows];
+        newUpdatedRows[existingRowIndex] = updatedRow;
+        return newUpdatedRows;
+      } else {
+        // 새로 수정된 데이터를 추가
+        return [...prevUpdatedRows, updatedRow];
+      }
+    });
+
     return updatedRow;
   };
 
   const handleRowModesModelChange = (newRowModesModel) => {
+    
     setRowModesModel(newRowModesModel);
+    //수정함수 만들려고 합니다.
+
+  };
+  //저장함수 
+  const saveUpdatedRows = async () => {
+    try {
+      const response = await fetch('api/post/edit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(rows), // 수정된 데이터를 서버로 전송
+      });
+
+      if (!response.ok) {
+        throw new Error('데이터 저장 실패');
+      }
+
+      const result = await response.json();
+      console.log('저장된 데이터:', result);
+      setUpdatedRows([]); // 성공적으로 저장되면 수정된 데이터 배열 초기화
+    } catch (error) {
+      console.error('AJAX 요청 오류:', error);
+      throw error;
+    }
   };
 
   const columns = [
-    { field: 'name', headerName: 'Name', width: 180, editable: true },
     {
-      field: 'age',
-      headerName: 'Age',
-      type: 'number',
-      width: 80,
-      align: 'left',
-      headerAlign: 'left',
+      field: 'status',
+      headerName: '상태',
+      width: 150,
+    },
+    {
+      field: 'name',
+      headerName: '이름',
+      width: 150,
       editable: true,
     },
     {
-      field: 'joinDate',
-      headerName: 'Join date',
+      field: 'phoneNumber',
+      headerName: '전화번호',
+      width: 150,
+      editable: true,
+    },
+    {
+      field: 'birth',
+      headerName: '생년월일',
       type: 'date',
-      width: 180,
+      width: 110,
       editable: true,
-    },
-    {
-      field: 'role',
-      headerName: 'Department',
-      width: 220,
-      editable: true,
-      type: 'singleSelect',
-      valueOptions: ['Market', 'Finance', 'Development'],
     },
     {
       field: 'actions',

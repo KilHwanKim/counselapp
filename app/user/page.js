@@ -17,7 +17,7 @@ export default async function UserMng() {
   return (
     <main className="p-4">
       {/* <UserGrid userList={userList}></UserGrid> */}
-      <FullFeaturedCrudGrid></FullFeaturedCrudGrid>
+      <FullFeaturedCrudGrid userList={userList}></FullFeaturedCrudGrid>
   </main>
   );
 }
