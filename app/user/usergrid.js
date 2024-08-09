@@ -46,7 +46,7 @@ export default function UserGrid(props) {
 
 
   const processRowUpdate = (newRow) => {
-    const updatedRow = { ...newRow, isNew: false };
+    const updatedRow = { ...newRow};
     setData(data.map((row) => (row.id === newRow.id ? updatedRow : row)));
     
     return updatedRow;
@@ -77,9 +77,26 @@ export default function UserGrid(props) {
 
 
   const handleSave = async () => {
-    // 데이터 저장 로직 추가
-    console.log('저장된 데이터:', data);
-    // 실제로는 서버에 저장하는 API 호출 등을 여기에 추가
+    try {
+      const response = await fetch('api/post/edit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data), // 수정된 데이터를 서버로 전송
+      });
+
+      if (!response.ok) {
+        throw new Error('데이터 저장 실패');
+      }
+
+      const result = await response.json();
+      console.log('저장된 데이터:', result);
+      
+    } catch (error) {
+      console.error('AJAX 요청 오류:', error);
+      throw error;
+    }
   };
   return (
     <div>
@@ -106,6 +123,7 @@ export default function UserGrid(props) {
           rows={data}
  
           columns={columns}
+          processRowUpdate={processRowUpdate}
           initialState={{
             pagination: {
               paginationModel: {
