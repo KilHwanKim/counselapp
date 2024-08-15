@@ -9,11 +9,15 @@ export default async function UserMng() {
   let userList = await db.collection('user').find().toArray();
   //id 변경
   userList = userList.map((a)=>{
-  a.id=a._id.toString()
-  a._id=a._id.toString()
+  //그리드 성질상 id 칼럼이 있어야 동작
+  a.id=a._id.toString();
+  a._id=a._id.toString();
+  //x grid 성질때문에 string 으로 바꿔야함
+  a.birth=new Date(a.birth);
   a.status="normal"
       return a
   })
+  console.log(userList)
   return (
     <main className="p-4">
       <UserGrid userList={userList}></UserGrid>
