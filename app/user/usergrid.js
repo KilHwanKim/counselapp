@@ -33,9 +33,11 @@ export default function UserGrid(props) {
     },
 
   ];
+
+
   // useState
-  const [data, setData] = React.useState(() => props.userList
-  );
+  const [data, setData] = React.useState(() => props.userList);
+  const [selectRows, setSelectRows] = React.useState({});
   const [rowModesModel, setRowModesModel] = React.useState({});
 
   const handleRowEditStop = (params, event) => {
@@ -98,6 +100,30 @@ export default function UserGrid(props) {
       throw error;
     }
   };
+  const handleDelete = async () => {
+      // const selectedRows = getSelectedRows();
+      console.log(selectRows);
+  //   try {
+  //     const response = await fetch('api/post/edit', {
+  //       method: 'DELETE',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify(data), // 수정된 데이터를 서버로 전송
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error('데이터 저장 실패');
+  //     }
+
+  //     const result = await response.json();
+  //     console.log('저장된 데이터:', result);
+      
+  //   } catch (error) {
+  //     console.error('AJAX 요청 오류:', error);
+  //     throw error;
+  //   }
+   };
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -107,7 +133,8 @@ export default function UserGrid(props) {
           onClick={handleAddRow}>
             추가
           </button>
-          <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700" >
+          <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700" 
+          onClick={handleDelete}>
             삭제
           </button>
           <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
@@ -131,6 +158,13 @@ export default function UserGrid(props) {
               },
             },
           }}
+          onRowSelectionModelChange={(ids) => {
+            setSelectRows(ids.map((id) => data.find((row) => row.id === id)));
+            
+            
+          }}
+
+
           pageSizeOptions={[30]}
           checkboxSelection
           disableRowSelectionOnClick
