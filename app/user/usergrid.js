@@ -1,10 +1,10 @@
 'use client'
 import React, { useState, useCallback } from 'react';
 import Box from '@mui/material/Box';
-import { DataGrid, GridRowEditStopReasons} from '@mui/x-data-grid';
+import { DataGrid, GridRowEditStopReasons } from '@mui/x-data-grid';
 import { v4 as uuidv4 } from 'uuid';
 export default function UserGrid(props) {
-  
+
   // 헤더 칼럼 정보 
   const columns = [
     {
@@ -48,9 +48,9 @@ export default function UserGrid(props) {
 
 
   const processRowUpdate = (newRow) => {
-    const updatedRow = { ...newRow};
+    const updatedRow = { ...newRow };
     setData(data.map((row) => (row.id === newRow.id ? updatedRow : row)));
-    
+
     return updatedRow;
   };
 
@@ -91,64 +91,74 @@ export default function UserGrid(props) {
       if (!response.ok) {
         throw new Error('데이터 저장 실패');
       }
-
+       alert("삭제 완료");
       const result = await response.json();
       console.log('저장된 데이터:', result);
-      
+      //상태 변경
+      setData(data.map((row) => ({
+        ...row,
+        status: row.status === "insert" ? "normal" : row.status
+      })));
+      alert("저장 완료");
     } catch (error) {
       console.error('AJAX 요청 오류:', error);
       throw error;
     }
   };
   const handleDelete = async () => {
-      // const selectedRows = getSelectedRows();
-      console.log(selectRows);
-  //   try {
-  //     const response = await fetch('api/post/edit', {
-  //       method: 'DELETE',
-  //       headers: {
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify(data), // 수정된 데이터를 서버로 전송
-  //     });
+    // const selectedRows = getSelectedRows();
+    console.log(selectRows);
+    // 선택된 행들의 id를 추출
+    const selectedIds = selectRows.map((row) => row.id);
 
-  //     if (!response.ok) {
-  //       throw new Error('데이터 저장 실패');
-  //     }
+    // 선택된 id가 아닌 것들만 남기도록 필터링
+    const newData = data.filter((row) => !selectedIds.includes(row.id));
 
-  //     const result = await response.json();
-  //     console.log('저장된 데이터:', result);
-      
-  //   } catch (error) {
-  //     console.error('AJAX 요청 오류:', error);
-  //     throw error;
-  //   }
-   };
+    // 상태를 업데이트
+    setData(newData);
+    try {
+      const response = await fetch('api/post/edit', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(selectRows), // 수정된 데이터를 서버로 전송
+      });
+
+      if (!response.ok) {
+        throw new Error('데이터 삭제 실패');
+      }
+      alert("삭제 완료");
+    } catch (error) {
+      console.error('AJAX 요청 오류:', error);
+      throw error;
+    }
+  };
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">학생 관리</h1>
         <div className="flex space-x-2">
           <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
-          onClick={handleAddRow}>
+            onClick={handleAddRow}>
             추가
           </button>
-          <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700" 
-          onClick={handleDelete}>
+          <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
+            onClick={handleDelete}>
             삭제
           </button>
           <button className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700"
-          onClick={handleSave}>
+            onClick={handleSave}>
             저장
           </button>
         </div>
       </div>
-      
+
       {/* 그리드 영역 */}
       <Box sx={{ height: '90%', width: '100%' }}>
         <DataGrid
           rows={data}
- 
+
           columns={columns}
           processRowUpdate={processRowUpdate}
           initialState={{
@@ -160,8 +170,6 @@ export default function UserGrid(props) {
           }}
           onRowSelectionModelChange={(ids) => {
             setSelectRows(ids.map((id) => data.find((row) => row.id === id)));
-            
-            
           }}
 
 

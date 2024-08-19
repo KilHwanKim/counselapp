@@ -12,7 +12,7 @@ export default async function UserMng() {
   //그리드 성질상 id 칼럼이 있어야 동작
   a.id=a._id.toString();
   a._id=a._id.toString();
-  //x grid 성질때문에 string 으로 바꿔야함
+  //x grid 성질때문에 DATE 으로 바꿔야함
   a.birth=new Date(a.birth);
   a.status="normal"
       return a
