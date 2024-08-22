@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import { DataGrid } from '@mui/x-data-grid';
 import { v4 as uuidv4 } from 'uuid';
 
-export default function ClassGrid(props) {
+export default function Home() {
   // 학생 데이터
   const [students, setStudents] = useState([
     { id: uuidv4(), name: 'John Doe', age: 20, major: 'Computer Science' },
@@ -44,32 +44,33 @@ export default function ClassGrid(props) {
     { field: 'className', headerName: 'Class Name', width: 200 },
     { field: 'schedule', headerName: 'Schedule', width: 300 },
   ];
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'row', height: '90vh', width: '100%', boxSizing: 'border-box' }}>
-    {/* 학생 조회 그리드 */}
-    <Box sx={{ flex: 1, height: '100%', padding: 1 }}>
-      <h2>학생 조회</h2>
-      <DataGrid
-        rows={students}
-        columns={studentColumns}
-        pageSizeOptions={[5]}
-        onRowSelectionModelChange={(ids) => {
-          setSelectedStudentId(ids[0]);
-        }}
-        checkboxSelection={false}
-      />
-    </Box>
+      {/* 학생 조회 그리드 */}
+      <Box sx={{ flex: 1, height: '100%', padding: 1 }}>
+        <h2>학생 조회</h2>
+        <DataGrid
+          rows={students}
+          columns={studentColumns}
+          pageSizeOptions={[5]}
+          onRowSelectionModelChange={(ids) => {
+            setSelectedStudentId(ids[0]);
+          }}
+          checkboxSelection={false}
+        />
+      </Box>
 
-    {/* 수업 조회 그리드 */}
-    <Box sx={{ flex: 1, height: '100%', padding: 1 }}>
-      <h2>수업 조회</h2>
-      <DataGrid
-        rows={filteredClasses}
-        columns={classColumns}
-        pageSizeOptions={[5]}
-        disableSelectionOnClick
-      />
+      {/* 수업 조회 그리드 */}
+      <Box sx={{ flex: 1, height: '100%', padding: 1 }}>
+        <h2>수업 조회</h2>
+        <DataGrid
+          rows={filteredClasses}
+          columns={classColumns}
+          pageSizeOptions={[5]}
+          disableSelectionOnClick
+        />
+      </Box>
     </Box>
-  </Box>
-  )
+  );
 }
