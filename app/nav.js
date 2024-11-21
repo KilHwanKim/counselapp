@@ -11,7 +11,7 @@ export default function Navbar() {
           </Link>
         </li>
         <li>
-          <Link href="/page1" className="text-white hover:text-gray-400">
+          <Link href="/schedule" className="text-white hover:text-gray-400">
             일정 관리
           </Link>
         </li>
