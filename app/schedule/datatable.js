@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from "react";
+import EditorPopup from "./EditorPopup"; // Quill 팝업 컴포넌트
 
 const DataTable = ({ selectedDate, initialData = [] }) => {
   // 초기 데이터 상태 관리
@@ -7,6 +8,12 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
     initialData.map((item) => ({ ...item, status: "original" }))
   );
   const [originalData, setOriginalData] = useState(initialData);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+
+
+  // 팝업 열기/닫기 함수
+  const openPopup = () => setIsPopupOpen(true);
+  const closePopup = () => setIsPopupOpen(false);
 
   const filteredData = selectedDate
     ? data.filter((item) => item.date === selectedDate && item.status !== "deleted")
@@ -49,10 +56,10 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
       data.map((item) =>
         item.id === id
           ? {
-              ...item,
-              [field]: value,
-              status: item.status === "new" ? "new" : "modified", // 수정된 상태 반영
-            }
+            ...item,
+            [field]: value,
+            status: item.status === "new" ? "new" : "modified", // 수정된 상태 반영
+          }
           : item
       )
     );
@@ -67,10 +74,10 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
     );
     const unchangedRows = data.filter((item) => item.status === "original");
 
-    console.log("추가된 행:", addedRows);
-    console.log("수정된 행:", modifiedRows);
-    console.log("삭제된 행:", deletedRows);
-    console.log("변경되지 않은 행:", unchangedRows);
+    // console.log("추가된 행:", addedRows);
+    // console.log("수정된 행:", modifiedRows);
+    // console.log("삭제된 행:", deletedRows);
+    // console.log("변경되지 않은 행:", unchangedRows);
 
     alert("저장되었습니다!");
     // 원본 데이터 업데이트
@@ -101,9 +108,8 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
           </button>
           <button
             onClick={handleDeleteRow}
-            className={`px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 ${
-              !selectedRow ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+            className={`px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 ${!selectedRow ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             disabled={!selectedRow}
           >
             삭제
@@ -114,6 +120,14 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
           >
             저장
           </button>
+
+          <button
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4"
+            onClick={openPopup}
+          >
+            글 수정하기
+          </button>
+
         </div>
       </div>
 
@@ -124,15 +138,15 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
               <th className="border border-gray-300 p-2">시간</th>
               <th className="border border-gray-300 p-2">이름</th>
               <th className="border border-gray-300 p-2">수업 상태</th>
+              <th className="border border-gray-300 p-2">일지</th>
             </tr>
           </thead>
           <tbody>
             {filteredData.map((item) => (
               <tr
                 key={item.id}
-                className={`cursor-pointer ${
-                  selectedRow === item.id ? "bg-gray-100" : ""
-                }`}
+                className={`cursor-pointer ${selectedRow === item.id ? "bg-gray-100" : ""
+                  }`}
                 onClick={() => setSelectedRow(item.id)}
               >
                 <td className="border border-gray-300 p-2">
@@ -165,6 +179,9 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
                     className="w-full p-1 border border-gray-300 rounded"
                   />
                 </td>
+                <td className="border border-gray-300 p-2">
+                    <button className="w-full bg-blue-500 text-white rounded hover:bg-blue-600" onClick={openPopup}>일지</button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -172,6 +189,8 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
       ) : (
         <p>{selectedDate ? "데이터가 없습니다." : "날짜를 선택해주세요."}</p>
       )}
+      {/* 팝업 */}
+      {isPopupOpen && <EditorPopup isPopupOpen={isPopupOpen} closePopup={closePopup} />}
     </div>
   );
 };
