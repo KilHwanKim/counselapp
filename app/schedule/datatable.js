@@ -3,15 +3,18 @@ import React, { useState, useEffect } from "react";
 import EditorPopup from "./EditorPopup"; // Quill 팝업 컴포넌트
 
 const DataTable = ({ selectedDate, initialData = [] }) => {
-  // 초기 데이터 상태 관리
   const [data, setData] = useState(
     initialData.map((item) => ({ ...item, status: "original" }))
   );
   const [originalData, setOriginalData] = useState(initialData);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [selectedRow, setSelectedRow] = useState(null);
 
+  // 브라우저에서만 실행되는 로직은 useEffect로 이동
+  useEffect(() => {
+    console.log("DataTable has been mounted in the browser.");
+  }, []);
 
-  // 팝업 열기/닫기 함수
   const openPopup = () => setIsPopupOpen(true);
   const closePopup = () => setIsPopupOpen(false);
 
@@ -19,29 +22,26 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
     ? data.filter((item) => item.date === selectedDate && item.status !== "deleted")
     : [];
 
-  const [selectedRow, setSelectedRow] = useState(null);
-
   const handleAddRow = () => {
     if (!selectedDate) {
       alert("날짜를 선택해주세요.");
       return;
     }
-
     const newRow = {
-      id: Date.now(), // 고유 ID
+      id: Date.now(),
       date: selectedDate,
       time: "00:00",
       name: "새 이름",
       description: "수업 상태",
-      status: "new", // 새로 추가된 행
+      status: "new",
     };
-    setData([...data, newRow]);
+    setData((prevData) => [...prevData, newRow]);
   };
 
   const handleDeleteRow = () => {
     if (selectedRow) {
-      setData(
-        data.map((item) =>
+      setData((prevData) =>
+        prevData.map((item) =>
           item.id === selectedRow ? { ...item, status: "deleted" } : item
         )
       );
@@ -51,39 +51,11 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
     }
   };
 
-  const handleInputChange = (id, field, value) => {
-    setData(
-      data.map((item) =>
-        item.id === id
-          ? {
-            ...item,
-            [field]: value,
-            status: item.status === "new" ? "new" : "modified", // 수정된 상태 반영
-          }
-          : item
-      )
-    );
-  };
-
   const handleSaveData = () => {
-    // 상태별 데이터 분류
-    const addedRows = data.filter((item) => item.status === "new");
-    const modifiedRows = data.filter((item) => item.status === "modified");
-    const deletedRows = originalData.filter(
-      (item) => !data.some((d) => d.id === item.id)
-    );
-    const unchangedRows = data.filter((item) => item.status === "original");
-
-    // console.log("추가된 행:", addedRows);
-    // console.log("수정된 행:", modifiedRows);
-    // console.log("삭제된 행:", deletedRows);
-    // console.log("변경되지 않은 행:", unchangedRows);
-
     alert("저장되었습니다!");
-    // 원본 데이터 업데이트
     setOriginalData(data.filter((item) => item.status !== "deleted"));
-    setData(
-      data.map((item) =>
+    setData((prevData) =>
+      prevData.map((item) =>
         item.status === "new" || item.status === "modified"
           ? { ...item, status: "original" }
           : item
@@ -97,8 +69,6 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
         <h2 className="text-lg font-bold">
           날짜: {selectedDate || "날짜를 선택해주세요"}
         </h2>
-
-        {/* 버튼 영역 */}
         <div className="flex gap-2">
           <button
             onClick={handleAddRow}
@@ -120,14 +90,12 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
           >
             저장
           </button>
-
           <button
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4"
             onClick={openPopup}
           >
             글 수정하기
           </button>
-
         </div>
       </div>
 
@@ -154,33 +122,21 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
                     type="text"
                     value={item.time}
                     onChange={(e) =>
-                      handleInputChange(item.id, "time", e.target.value)
+                      setData((prevData) =>
+                        prevData.map((dataItem) =>
+                          dataItem.id === item.id
+                            ? { ...dataItem, time: e.target.value }
+                            : dataItem
+                        )
+                      )
                     }
                     className="w-full p-1 border border-gray-300 rounded"
                   />
                 </td>
+                <td className="border border-gray-300 p-2">{item.name}</td>
+                <td className="border border-gray-300 p-2">{item.description}</td>
                 <td className="border border-gray-300 p-2">
-                  <input
-                    type="text"
-                    value={item.name}
-                    onChange={(e) =>
-                      handleInputChange(item.id, "name", e.target.value)
-                    }
-                    className="w-full p-1 border border-gray-300 rounded"
-                  />
-                </td>
-                <td className="border border-gray-300 p-2">
-                  <input
-                    type="text"
-                    value={item.description}
-                    onChange={(e) =>
-                      handleInputChange(item.id, "description", e.target.value)
-                    }
-                    className="w-full p-1 border border-gray-300 rounded"
-                  />
-                </td>
-                <td className="border border-gray-300 p-2">
-                    <button className="w-full bg-blue-500 text-white rounded hover:bg-blue-600" onClick={openPopup}>일지</button>
+                  <button onClick={openPopup}>일지</button>
                 </td>
               </tr>
             ))}
@@ -189,7 +145,6 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
       ) : (
         <p>{selectedDate ? "데이터가 없습니다." : "날짜를 선택해주세요."}</p>
       )}
-      {/* 팝업 */}
       {isPopupOpen && <EditorPopup isPopupOpen={isPopupOpen} closePopup={closePopup} />}
     </div>
   );
