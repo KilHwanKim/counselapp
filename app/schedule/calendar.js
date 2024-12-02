@@ -1,3 +1,4 @@
+'use client';
 import React, { useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/ko"; // 한글 로케일 불러오기
