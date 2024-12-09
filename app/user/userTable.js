@@ -22,7 +22,11 @@ const UserTable = ({ data }) => {
   const handleDeleteRow = () => {
     if (selectedRow) {
       setUsers((prevUsers) =>
-        prevUsers.map((user) =>
+        prevUsers.filter((user) =>
+          user.id === selectedRow
+            ? user.status !== "new" // "new" 상태면 아예 제거
+            : true
+        ).map((user) =>
           user.id === selectedRow ? { ...user, status: "deleted" } : user
         )
       );
