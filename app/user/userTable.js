@@ -8,7 +8,7 @@ const UserTable = ({ data }) => {
     // 새로운 행 추가
     const handleAddRow = () => {
         const newRow = {
-            id: Date.now(),
+            _id: Date.now(),
             name: "",
             parentPhone: "",
             birthday: "",
@@ -114,7 +114,7 @@ const UserTable = ({ data }) => {
                 <tbody>
                     {users.map((user) => (
                         <tr
-                            key={user.id}
+                            key={user._id}
                             className={`cursor-pointer ${getStatusClass(user.status)} ${selectedRow === user.id ? "ring-2 ring-gray-300" : ""
                                 }`}
                             onClick={() => setSelectedRow(user.id)}
