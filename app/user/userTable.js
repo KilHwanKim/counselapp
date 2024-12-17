@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from "react";
+import * as XLSX from "xlsx";
 
 const UserTable = ({ data }) => {
     const [users, setUsers] = useState(data);
@@ -61,6 +62,39 @@ const UserTable = ({ data }) => {
         }
     };
 
+    // Excel Import
+    const handleImportExcel = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, { type: "array" });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const importedData = XLSX.utils.sheet_to_json(sheet).map((row) => ({
+                _id: Date.now() + Math.random(),
+                name: row["name"] || "",
+                parentPhone: row["phoneNumber"] || "",
+                birthday: row["birthday"] || "",
+                notes: row["notes"] || "",
+                status: "new",
+            }));
+            setUsers((prevUsers) => [...prevUsers, ...importedData]);
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    // Excel Export
+    const handleExportExcel = () => {
+        const exportData = users.map(({ _id, ...rest }) => rest);
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
+        XLSX.writeFile(workbook, "users.xlsx");
+    };
+
     // 상태에 따른 색상 클래스 지정
     const getStatusClass = (status) => {
         switch (status) {
@@ -100,6 +134,21 @@ const UserTable = ({ data }) => {
                     >
                         저장
                     </button>
+                    <button
+                        onClick={handleExportExcel}
+                        className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+                    >
+                        Excel 내보내기
+                    </button>
+                    <label className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 cursor-pointer">
+                        Excel 가져오기
+                        <input
+                            type="file"
+                            accept=".xlsx, .xls"
+                            onChange={handleImportExcel}
+                            className="hidden"
+                        />
+                    </label>
                 </div>
             </div>
             <table className="w-full border-collapse border border-gray-200">
@@ -127,7 +176,7 @@ const UserTable = ({ data }) => {
                                         setUsers((prevUsers) =>
                                             prevUsers.map((u) =>
                                                 u.id === user.id
-                                                    ? (u.status === "new" ? { ...u, name: e.target.value, status: "new" } : { ...u, name: e.target.value, status: "modified" })
+                                                    ? { ...u, name: e.target.value, status: "modified" }
                                                     : u
                                             )
                                         )
@@ -143,19 +192,7 @@ const UserTable = ({ data }) => {
                                         setUsers((prevUsers) =>
                                             prevUsers.map((u) =>
                                                 u.id === user.id
-                                                    ? (u.status === "new" ?
-                                                        {
-                                                            ...u,
-                                                            parentPhone: e.target.value,
-                                                            status: "new",
-                                                        } :
-                                                        {
-                                                            ...u,
-                                                            parentPhone: e.target.value,
-                                                            status: "modified",
-                                                        }
-
-                                                    )
+                                                    ? { ...u, parentPhone: e.target.value, status: "modified" }
                                                     : u
                                             )
                                         )
@@ -171,11 +208,7 @@ const UserTable = ({ data }) => {
                                         setUsers((prevUsers) =>
                                             prevUsers.map((u) =>
                                                 u.id === user.id
-                                                    ? (u.status === "new" ?
-                                                        { ...u, birthday: e.target.value, status: "new" }
-                                                        :
-                                                        { ...u, birthday: e.target.value, status: "modified" }
-                                                    )
+                                                    ? { ...u, birthday: e.target.value, status: "modified" }
                                                     : u
                                             )
                                         )
@@ -191,12 +224,7 @@ const UserTable = ({ data }) => {
                                         setUsers((prevUsers) =>
                                             prevUsers.map((u) =>
                                                 u.id === user.id
-
-                                                    ?( u.status ==="new"
-
-                                                        ?{ ...u, notes: e.target.value, status: "new" }
-                                                        :{ ...u, notes: e.target.value, status: "modified" }
-                                                    )
+                                                    ? { ...u, notes: e.target.value, status: "modified" }
                                                     : u
                                             )
                                         )
