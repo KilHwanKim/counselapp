@@ -64,35 +64,41 @@ const UserTable = ({ data }) => {
 
     // Excel Import
     const handleImportExcel = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const data = new Uint8Array(event.target.result);
-            const workbook = XLSX.read(data, { type: "array" });
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            const importedData = XLSX.utils.sheet_to_json(sheet).map((row) => ({
-                _id: Date.now() + Math.random(),
-                name: row["name"] || "",
-                parentPhone: row["phoneNumber"] || "",
-                birthday: row["birthday"] || "",
-                notes: row["notes"] || "",
-                status: "new",
-            }));
-            setUsers((prevUsers) => [...prevUsers, ...importedData]);
-        };
-        reader.readAsArrayBuffer(file);
+        console.log("import");
     };
 
     // Excel Export
-    const handleExportExcel = () => {
-        const exportData = users.map(({ _id, ...rest }) => rest);
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Users");
-        XLSX.writeFile(workbook, "users.xlsx");
+    const handleExportExcel = async () => {
+        try {
+            const response = await fetch("/api/excel", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    type: "user",
+                    data: users
+                }),
+            });
+            if (!response.ok) {
+                throw new Error('Failed to download Excel file');
+            }
+    
+            // 응답을 Blob으로 변환
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            
+            // 파일 다운로드 처리
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `user_data.xlsx`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        
+        } catch (error) {
+            console.error("Error saving data:", error);
+            alert("저장 중 오류가 발생했습니다.");
+        }
     };
 
     // 상태에 따른 색상 클래스 지정
