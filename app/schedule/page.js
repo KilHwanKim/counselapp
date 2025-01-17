@@ -18,10 +18,10 @@ const Home = () => {
   return (
     <div className="flex h-screen">
       <div className="w-1/3">
-        <Calendar data={mockData} onDateSelect={setSelectedDate} />
+        {/* <Calendar data={mockData} onDateSelect={setSelectedDate} /> */}
       </div>
       <div className="w-2/3">
-        <DataTable selectedDate={selectedDate} initialData={mockData} />
+        {/* <DataTable selectedDate={selectedDate} initialData={mockData} /> */}
       </div>
     </div>
   );
