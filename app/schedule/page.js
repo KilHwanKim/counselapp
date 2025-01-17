@@ -1,10 +1,9 @@
-'use client'
 import React, { useState, useEffect } from 'react';
 import Calendar from "./calendar";
 import DataTable from "./datatable";
 
 const Home = () => {
-  const [selectedDate, setSelectedDate] = useState(null);
+  // const [selectedDate, setSelectedDate] = useState(null);
 
   const mockData = [
     { id: 1,time:"9:00",  date: "2024-11-20", description: "한달 동안 수업한 횟수", name:'장재신' },
