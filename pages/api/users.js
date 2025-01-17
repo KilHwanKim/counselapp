@@ -13,7 +13,6 @@ export default async function handler(req, res) {
 
         // POST 요청: 사용자 데이터 업데이트
         const updatedUsers = req.body;
-        console.log(req.body)
         // 상태별로 데이터 처리
         updatedUsers.forEach((user) => {
             if (user.status === "new") {

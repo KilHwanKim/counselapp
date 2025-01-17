@@ -63,8 +63,36 @@ const UserTable = ({ data }) => {
     };
 
     // Excel Import
-    const handleImportExcel = (e) => {
-        console.log("import");
+    const handleImportExcel = async (e) => {
+        const file = e.target.files[0];
+        
+        // 파일 있는 지 체크
+        if (!file) {
+            console.log('Please select a file.');
+            return;
+        }
+        //form 만들기
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                console.log(result.data);
+                
+            } else {
+                console.log(result.error || 'Something went wrong.');
+            }
+        } catch (error) {
+            console.log(error);
+            console.log('Error uploading file.');
+        }
     };
 
     // Excel Export
@@ -83,18 +111,18 @@ const UserTable = ({ data }) => {
             if (!response.ok) {
                 throw new Error('Failed to download Excel file');
             }
-    
+
             // 응답을 Blob으로 변환
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
-            
+
             // 파일 다운로드 처리
             const a = document.createElement('a');
             a.href = url;
             a.download = `user_data.xlsx`;
             a.click();
             window.URL.revokeObjectURL(url);
-        
+
         } catch (error) {
             console.error("Error saving data:", error);
             alert("저장 중 오류가 발생했습니다.");
