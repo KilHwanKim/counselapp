@@ -17,19 +17,15 @@ export default async function handler(req, res) {
         if (type === "user") {
             console.log("User data received:", data);
             worksheet.columns = [
-                { header: 'ID', key: 'id', width: 10 },
-                { header: 'Name', key: 'name', width: 30 },
-                { header: 'Email', key: 'email', width: 40 },
+                { header: '이름', key: 'name', width: 30 },
+                { header: '부모 전화번호', key: 'phoneNumber', width: 30 },
+                { header: '생년월일', key: 'birth', width: 40 },
+                { header: '생활연령(수정X)', key: 'age', width: 40 },
+                { header: '비고', key: 'note', width: 40 },
             ];
             data.forEach(user => worksheet.addRow(user));
         } else if (type === "course") {
-            console.log("Course data received:", data);
-            worksheet.columns = [
-                { header: 'Course ID', key: 'id', width: 10 },
-                { header: 'Course Name', key: 'name', width: 30 },
-                { header: 'Description', key: 'description', width: 50 },
-            ];
-            data.forEach(course => worksheet.addRow(course));
+            console.log("미구현")
         } else {
             return res.status(400).json({ message: "Invalid type" });
         }
