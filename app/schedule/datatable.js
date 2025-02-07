@@ -1,6 +1,9 @@
 'use client';
 import React, { useState, useEffect } from "react";
-import EditorPopup from "./EditorPopup"; // Quill 팝업 컴포넌트
+import dynamic from "next/dynamic"; // dynamic import 추가
+
+// EditorPopup을 클라이언트에서만 로드 (SSR 비활성화)
+const EditorPopup = dynamic(() => import("./EditorPopup"), { ssr: false });
 
 const DataTable = ({ selectedDate, initialData = [] }) => {
   const [data, setData] = useState(
@@ -10,7 +13,6 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [selectedRow, setSelectedRow] = useState(null);
 
-  // 브라우저에서만 실행되는 로직은 useEffect로 이동
   useEffect(() => {
     console.log("DataTable has been mounted in the browser.");
   }, []);
@@ -145,6 +147,8 @@ const DataTable = ({ selectedDate, initialData = [] }) => {
       ) : (
         <p>{selectedDate ? "데이터가 없습니다." : "날짜를 선택해주세요."}</p>
       )}
+      
+      {/* 팝업을 isPopupOpen 상태에 따라 표시 */}
       {isPopupOpen && <EditorPopup isPopupOpen={isPopupOpen} closePopup={closePopup} />}
     </div>
   );
