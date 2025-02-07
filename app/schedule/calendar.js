@@ -2,12 +2,13 @@
 import React, { useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/ko"; // 한글 로케일 불러오기
-
+import DataTable from "./datatable";
 // 글로벌로 한글 로케일 설정
 dayjs.locale("ko");
 
-const Calendar = ({ data, onDateSelect }) => {
+const Calendar = ({ data }) => {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
+  const [selectedDate, setSelectedDate] = useState(null);
 
   // 현재 월의 일 수와 시작 요일 계산
   const daysInMonth = currentMonth.daysInMonth();
@@ -21,6 +22,11 @@ const Calendar = ({ data, onDateSelect }) => {
     data.some(
       (item) => item.date === currentMonth.date(date).format("YYYY-MM-DD")
     );
+
+  // 날짜 선택 함수
+  const onDateSelect = (date) => {
+    setSelectedDate(date);
+  };
 
   return (
     <div className="flex h-screen">
@@ -77,7 +83,9 @@ const Calendar = ({ data, onDateSelect }) => {
           </div>
         </div>
       </div>
-      <div className="w-2/3"></div>
+      <div className="w-2/3">
+        <DataTable selectedDate={selectedDate} initialData={data} />
+      </div>
     </div>
   );
 };
