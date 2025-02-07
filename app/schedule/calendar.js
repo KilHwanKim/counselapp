@@ -84,7 +84,6 @@ const Calendar = ({ data }) => {
         </div>
       </div>
       <div className="w-2/3">
-        {/* <DataTable selectedDate={selectedDate} initialData={data} /> */}
       </div>
     </div>
   );
