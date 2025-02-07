@@ -2,7 +2,6 @@
 import React, { useState } from "react";
 import dayjs from "dayjs";
 import "dayjs/locale/ko"; // 한글 로케일 불러오기
-import DataTable from "./datatable";
 // 글로벌로 한글 로케일 설정
 dayjs.locale("ko");
 
