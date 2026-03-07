@@ -16,12 +16,15 @@
     }
 
     function ageFromBirthDate(birthDateStr) {
-        if (!birthDateStr || String(birthDateStr).length < 10) return '';
-        var birth = new Date(String(birthDateStr).slice(0, 10));
+        var s = String(birthDateStr || '').slice(0, 10);
+        if (s.length < 10) return '';
+        var parts = s.split('-').map(Number);
+        var by = parts[0], bm = parts[1], bd = parts[2];
+        if (!by || isNaN(by)) return '';
         var today = new Date();
-        if (isNaN(birth.getTime())) return '';
-        var months = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
-        if (today.getDate() < birth.getDate()) months -= 1;
+        var ty = today.getFullYear(), tm = today.getMonth() + 1, td = today.getDate();
+        var months = (ty - by) * 12 + (tm - (bm || 1));
+        if (td < (bd || 1)) months -= 1;
         if (months < 0) return '';
         var years = Math.floor(months / 12);
         var monthsPart = months % 12;

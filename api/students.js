@@ -9,6 +9,16 @@ function getBody(req) {
   return {};
 }
 
+function toDateString(v) {
+  if (v == null) return '';
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return '';
+    return v.getFullYear() + '-' + String(v.getMonth() + 1).padStart(2, '0') + '-' + String(v.getDate()).padStart(2, '0');
+  }
+  const s = String(v).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+}
+
 export default async function handler(req, res) {
   const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
   if (!connectionString) {
@@ -25,14 +35,14 @@ export default async function handler(req, res) {
       if (q) {
         const pattern = '%' + q + '%';
         rows = await sql`
-          SELECT id, name, parent_phone, birth_date, first_visit_date, reg_date, notes, created_at, updated_at
+          SELECT id, name, parent_phone, birth_date, first_visit_date, reg_date, notes
           FROM students
           WHERE name ILIKE ${pattern} OR parent_phone ILIKE ${pattern} OR (notes IS NOT NULL AND notes ILIKE ${pattern})
           ORDER BY id DESC
         `;
       } else {
         rows = await sql`
-          SELECT id, name, parent_phone, birth_date, first_visit_date, reg_date, notes, created_at, updated_at
+          SELECT id, name, parent_phone, birth_date, first_visit_date, reg_date, notes
           FROM students
           ORDER BY id DESC
         `;
@@ -41,12 +51,10 @@ export default async function handler(req, res) {
         id: r.id,
         name: r.name,
         parent_phone: r.parent_phone || '',
-        birth_date: r.birth_date ? String(r.birth_date).slice(0, 10) : '',
-        first_visit_date: r.first_visit_date ? String(r.first_visit_date).slice(0, 10) : '',
-        reg_date: r.reg_date ? String(r.reg_date).slice(0, 10) : '',
+        birth_date: toDateString(r.birth_date),
+        first_visit_date: toDateString(r.first_visit_date),
+        reg_date: toDateString(r.reg_date),
         notes: r.notes || '',
-        created_at: r.created_at ? String(r.created_at) : '',
-        updated_at: r.updated_at ? String(r.updated_at) : '',
       }));
       return res.status(200).json({ ok: true, students });
     }

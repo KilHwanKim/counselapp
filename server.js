@@ -31,6 +31,10 @@ app.get('/api/lessons', lessonsHandler);
 app.post('/api/lessons', lessonsHandler);
 app.delete('/api/lessons', lessonsHandler);
 
+const actualLessonsHandler = (await import('./api/actual-lessons.js')).default;
+app.get('/api/actual-lessons', actualLessonsHandler);
+app.post('/api/actual-lessons', actualLessonsHandler);
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`  Main:     http://localhost:${PORT}/`);

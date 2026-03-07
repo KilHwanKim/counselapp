@@ -127,6 +127,15 @@ export default async function handler(req, res) {
         return res.status(400).json({ ok: false, error: 'day_of_week is required (1-7)' });
       }
       if (!startTime) return res.status(400).json({ ok: false, error: 'start_time is required' });
+      const existing = await sql`
+        SELECT id FROM lessons WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
+      `;
+      if (existing && existing.length > 0) {
+        const lessonId = existing[0].id;
+        await sql`
+          DELETE FROM actual_lessons WHERE lesson_id = ${lessonId} AND lesson_date >= CURRENT_DATE
+        `;
+      }
       await sql`
         DELETE FROM lessons WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
       `;
