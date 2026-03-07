@@ -4,22 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
-    <title>DB 연결 테스트</title>
+    <title>DB ?? ???</title>
     <style>
         body { font-family: 'Pretendard', sans-serif; background-color: #f5f6f7; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-6">
     <div class="bg-white rounded-lg shadow-md p-8 max-w-md w-full">
-        <h1 class="text-xl font-bold text-gray-800 mb-2">DB 연결 테스트</h1>
-        <p class="text-sm text-gray-500 mb-6">Postgres(Vercel/Neon) 연결 상태를 확인합니다.</p>
+        <h1 class="text-xl font-bold text-gray-800 mb-2">DB ?? ???</h1>
+        <p class="text-sm text-gray-500 mb-6">Postgres(Vercel/Neon) ?? ??? ?????.</p>
         <button
             id="testBtn"
             class="w-full bg-[#00c73c] hover:bg-[#00a832] text-white font-medium py-3 px-4 rounded-md transition"
         >
-            DB 연결 테스트
+            DB ?? ???
         </button>
         <div id="result" class="mt-6 hidden"></div>
+
+        <button
+            id="tablesBtn"
+            class="w-full mt-4 bg-[#4a5a69] hover:bg-[#3e4d61] text-white font-medium py-3 px-4 rounded-md transition"
+        >
+            ?? ??? ??
+        </button>
+        <div id="tablesResult" class="mt-6 hidden"></div>
     </div>
     <script>
         const btn = document.getElementById('testBtn');
@@ -27,23 +35,53 @@
         btn.addEventListener('click', async () => {
             btn.disabled = true;
             resultEl.classList.remove('hidden');
-            resultEl.innerHTML = '<p class="text-gray-500">연결 중...</p>';
+            resultEl.innerHTML = '<p class="text-gray-500">?? ?...</p>';
             resultEl.className = 'mt-6 p-4 rounded-md bg-gray-100 text-gray-700';
             try {
                 const res = await fetch('/api/db-test');
                 const data = await res.json();
                 if (data.ok) {
                     resultEl.className = 'mt-6 p-4 rounded-md bg-green-50 text-green-800';
-                    resultEl.innerHTML = '<p class="font-medium">연결 성공</p><p class="text-sm mt-1">' + (data.message || 'Connected') + (data.time ? ' — ' + data.time : '') + '</p>';
+                    resultEl.innerHTML = '<p class="font-medium">?? ??</p><p class="text-sm mt-1">' + (data.message || 'Connected') + (data.time ? ' ? ' + data.time : '') + '</p>';
                 } else {
                     resultEl.className = 'mt-6 p-4 rounded-md bg-red-50 text-red-800';
-                    resultEl.innerHTML = '<p class="font-medium">연결 실패</p><p class="text-sm mt-1">' + (data.error || res.statusText) + '</p>';
+                    resultEl.innerHTML = '<p class="font-medium">?? ??</p><p class="text-sm mt-1">' + (data.error || res.statusText) + '</p>';
                 }
             } catch (err) {
                 resultEl.className = 'mt-6 p-4 rounded-md bg-red-50 text-red-800';
-                resultEl.innerHTML = '<p class="font-medium">오류</p><p class="text-sm mt-1">' + err.message + '</p>';
+                resultEl.innerHTML = '<p class="font-medium">??</p><p class="text-sm mt-1">' + err.message + '</p>';
             }
             btn.disabled = false;
+        });
+
+        const tablesBtn = document.getElementById('tablesBtn');
+        const tablesResultEl = document.getElementById('tablesResult');
+        tablesBtn.addEventListener('click', async () => {
+            tablesBtn.disabled = true;
+            tablesResultEl.classList.remove('hidden');
+            tablesResultEl.innerHTML = '<p class="text-gray-500">?? ?...</p>';
+            tablesResultEl.className = 'mt-6 p-4 rounded-md bg-gray-100 text-gray-700';
+            try {
+                const res = await fetch('/api/db-tables');
+                const data = await res.json();
+                if (data.ok) {
+                    const tables = data.tables || [];
+                    tablesResultEl.className = 'mt-6 p-4 rounded-md bg-gray-50 text-gray-800';
+                    if (tables.length === 0) {
+                        tablesResultEl.innerHTML = '<p class="font-medium">public ??? ???</p><p class="text-sm mt-1">??? ??</p>';
+                    } else {
+                        tablesResultEl.innerHTML = '<p class="font-medium">public ??? ??? (' + tables.length + '?)</p><ul class="text-sm mt-2 list-disc list-inside">' +
+                            tables.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>';
+                    }
+                } else {
+                    tablesResultEl.className = 'mt-6 p-4 rounded-md bg-red-50 text-red-800';
+                    tablesResultEl.innerHTML = '<p class="font-medium">?? ??</p><p class="text-sm mt-1">' + (data.error || res.statusText) + '</p>';
+                }
+            } catch (err) {
+                tablesResultEl.className = 'mt-6 p-4 rounded-md bg-red-50 text-red-800';
+                tablesResultEl.innerHTML = '<p class="font-medium">??</p><p class="text-sm mt-1">' + err.message + '</p>';
+            }
+            tablesBtn.disabled = false;
         });
     </script>
 </body>
