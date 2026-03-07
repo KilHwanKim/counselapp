@@ -26,8 +26,9 @@ app.post('/api/students', studentsHandler);
 app.put('/api/students', studentsHandler);
 app.delete('/api/students', studentsHandler);
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`  Main:     http://localhost:${PORT}/`);
+  console.log(`  Students: http://localhost:${PORT}/students.html`);
   console.log(`  DB Test:  http://localhost:${PORT}/tests/db-connection.html`);
 });
