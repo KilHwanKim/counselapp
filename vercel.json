@@ -1,3 +1,6 @@
 {
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "installCommand": "",
   "rewrites": [{ "source": "/", "destination": "/스마트스토어.html" }]
 }
