@@ -58,7 +58,7 @@ export default async function handler(req, res) {
       const parent_phone = body.parent_phone != null ? String(body.parent_phone).trim() : null;
       const birth_date = body.birth_date && String(body.birth_date).trim() ? String(body.birth_date).trim() : null;
       const first_visit_date = body.first_visit_date && String(body.first_visit_date).trim() ? String(body.first_visit_date).trim() : null;
-      const reg_date = body.reg_date && String(body.reg_date).trim() ? String(body.reg_date).trim() : null;
+      const reg_date = body.reg_date && String(body.reg_date).trim() ? String(body.reg_date).trim() : new Date().toISOString().slice(0, 10);
       const notes = body.notes != null ? String(body.notes).trim() : null;
 
       const rows = await sql`
