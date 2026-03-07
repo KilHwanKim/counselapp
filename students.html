@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>학생 관리 - 상담 관리자 센터</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #f5f6f7; }
+        .sidebar-item:hover { background-color: #3e4d61; }
+        .active-menu { background-color: #2c3949; border-left: 4px solid #00c73c; }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row min-h-screen">
+    <aside class="w-full md:w-64 bg-[#4a5a69] text-white flex-shrink-0">
+        <div class="p-5 bg-[#3e4d61] flex items-center justify-between">
+            <h1 class="font-bold text-lg tracking-tight"><a href="/" class="text-white no-underline">상담센터 <span class="text-[#00c73c]">Admin</span></a></h1>
+            <button class="md:hidden text-white">☰</button>
+        </div>
+        <nav class="mt-2">
+            <div class="px-5 py-3 text-xs text-gray-400 uppercase font-bold">매니지먼트</div>
+            <a href="/students" class="sidebar-item active-menu block px-5 py-3 flex items-center gap-3">
+                <span>📋</span> 학생 등록/조회
+            </a>
+            <a href="#" class="sidebar-item block px-5 py-3 flex items-center gap-3 transition">
+                <span>📅</span> 수업 등록/수정
+            </a>
+            <div class="px-5 py-3 mt-4 text-xs text-gray-400 uppercase font-bold">커뮤니케이션</div>
+            <a href="#" class="sidebar-item block px-5 py-3 flex items-center gap-3 transition">
+                <span>💬</span> 문자 발송 관리
+            </a>
+            <a href="#" class="sidebar-item block px-5 py-3 flex items-center gap-3 transition">
+                <span>📊</span> 통계 분석
+            </a>
+        </nav>
+    </aside>
+
+    <div class="flex-1 flex flex-col">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
+            <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-gray-600">김길환 매니저님, 환영합니다.</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <button class="flex items-center gap-2 bg-[#FEE500] hover:bg-[#fada0a] text-[#191919] px-3 py-1.5 rounded-md text-sm font-bold shadow-sm transition">
+                    <img src="https://developers.kakao.com/assets/img/about/logos/kakaotalksharing/kakaotalk_sharing_btn_medium.png" class="w-4 h-4" alt="카카오"> 카카오 계정 연결
+                </button>
+            </div>
+        </header>
+
+        <main class="flex-1 p-6 overflow-auto">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <h2 class="text-xl font-bold text-gray-800">학생 관리</h2>
+                <div class="flex flex-wrap items-center gap-3">
+                    <input type="text" id="searchInput" placeholder="이름, 전화번호, 특이사항 검색..." class="px-3 py-2 border border-gray-300 rounded-md text-sm w-64 focus:ring-2 focus:ring-[#00c73c] focus:border-[#00c73c]">
+                    <button type="button" id="addBtn" class="bg-[#00c73c] hover:bg-[#00a832] text-white font-medium px-4 py-2 rounded-md transition">추가</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">이름</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">부모님 전화번호</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">생년월일</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">처음온 날짜</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">등록일(RegDate)</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">특이사항</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">작업</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gridBody" class="divide-y divide-gray-200 bg-white">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="gridEmpty" class="hidden px-4 py-8 text-center text-gray-500 text-sm">등록된 학생이 없습니다.</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 모달: 추가/수정 -->
+    <div id="modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/50" id="modalBackdrop"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6">
+                    <h3 id="modalTitle" class="text-lg font-bold text-gray-800 mb-4">학생 추가</h3>
+                    <form id="modalForm" class="space-y-4">
+                        <input type="hidden" id="editId" value="">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">이름 <span class="text-red-500">*</span></label>
+                            <input type="text" id="mName" required class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#00c73c] focus:border-[#00c73c]">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">부모님 전화번호</label>
+                            <input type="text" id="mParentPhone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#00c73c] focus:border-[#00c73c]">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">생년월일</label>
+                            <input type="date" id="mBirthDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#00c73c] focus:border-[#00c73c]">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">처음온 날짜</label>
+                            <input type="date" id="mFirstVisitDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#00c73c] focus:border-[#00c73c]">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">등록일(RegDate)</label>
+                            <input type="date" id="mRegDate" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#00c73c] focus:border-[#00c73c]">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">특이사항</label>
+                            <textarea id="mNotes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#00c73c] focus:border-[#00c73c]"></textarea>
+                        </div>
+                        <div class="flex gap-2 pt-2">
+                            <button type="submit" class="flex-1 bg-[#00c73c] hover:bg-[#00a832] text-white font-medium py-2 rounded-md transition">저장</button>
+                            <button type="button" id="modalCancel" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 rounded-md transition">취소</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const gridBody = document.getElementById('gridBody');
+        const gridEmpty = document.getElementById('gridEmpty');
+        const searchInput = document.getElementById('searchInput');
+        const addBtn = document.getElementById('addBtn');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalForm = document.getElementById('modalForm');
+        const editId = document.getElementById('editId');
+        const mName = document.getElementById('mName');
+        const mParentPhone = document.getElementById('mParentPhone');
+        const mBirthDate = document.getElementById('mBirthDate');
+        const mFirstVisitDate = document.getElementById('mFirstVisitDate');
+        const mRegDate = document.getElementById('mRegDate');
+        const mNotes = document.getElementById('mNotes');
+        const modalCancel = document.getElementById('modalCancel');
+        const modalBackdrop = document.getElementById('modalBackdrop');
+
+        let searchTimer = null;
+        function loadList() {
+            const q = searchInput.value.trim();
+            const url = q ? '/api/students?q=' + encodeURIComponent(q) : '/api/students';
+            fetch(url)
+                .then((r) => r.json())
+                .then((data) => {
+                    if (!data.ok) throw new Error(data.error || '목록 조회 실패');
+                    renderGrid(data.students || []);
+                })
+                .catch((err) => {
+                    gridBody.innerHTML = '<tr><td colspan="7" class="px-4 py-3 text-red-600 text-sm">' + err.message + '</td></tr>';
+                    gridEmpty.classList.add('hidden');
+                });
+        }
+
+        function renderGrid(students) {
+            if (!students.length) {
+                gridBody.innerHTML = '';
+                gridEmpty.classList.remove('hidden');
+                return;
+            }
+            gridEmpty.classList.add('hidden');
+            gridBody.innerHTML = students
+                .map(
+                    (s) =>
+                        '<tr class="hover:bg-gray-50" data-student="' + escapeAttr(JSON.stringify(s)) + '">' +
+                        '<td class="px-4 py-3 text-sm text-gray-800">' + escapeHtml(s.name) + '</td>' +
+                        '<td class="px-4 py-3 text-sm text-gray-600">' + escapeHtml(s.parent_phone) + '</td>' +
+                        '<td class="px-4 py-3 text-sm text-gray-600">' + escapeHtml(s.birth_date) + '</td>' +
+                        '<td class="px-4 py-3 text-sm text-gray-600">' + escapeHtml(s.first_visit_date) + '</td>' +
+                        '<td class="px-4 py-3 text-sm text-gray-600">' + escapeHtml(s.reg_date) + '</td>' +
+                        '<td class="px-4 py-3 text-sm text-gray-600 max-w-xs truncate">' + escapeHtml(s.notes) + '</td>' +
+                        '<td class="px-4 py-3"><button type="button" class="editBtn text-[#00c73c] hover:underline text-sm mr-2" data-id="' + s.id + '">수정</button><button type="button" class="deleteBtn text-red-600 hover:underline text-sm" data-id="' + s.id + '" data-name="' + escapeAttr(s.name) + '">삭제</button></td>' +
+                        '</tr>'
+                )
+                .join('');
+            gridBody.querySelectorAll('.editBtn').forEach((el) => el.addEventListener('click', openEdit));
+            gridBody.querySelectorAll('.deleteBtn').forEach((el) => el.addEventListener('click', doDelete));
+        }
+
+        function escapeHtml(str) {
+            if (str == null) return '';
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+        function escapeAttr(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;');
+        }
+
+        function openAdd() {
+            editId.value = '';
+            modalTitle.textContent = '학생 추가';
+            mName.value = '';
+            mParentPhone.value = '';
+            mBirthDate.value = '';
+            mFirstVisitDate.value = '';
+            mRegDate.value = '';
+            mNotes.value = '';
+            modal.classList.remove('hidden');
+        }
+
+        function openEdit(e) {
+            const row = e.target.closest('tr');
+            const dataStr = row && row.getAttribute('data-student');
+            if (!dataStr) return;
+            let s;
+            try {
+                s = JSON.parse(dataStr);
+            } catch (err) {
+                return;
+            }
+            editId.value = s.id || '';
+            modalTitle.textContent = '학생 수정';
+            mName.value = s.name || '';
+            mParentPhone.value = s.parent_phone || '';
+            mBirthDate.value = s.birth_date || '';
+            mFirstVisitDate.value = s.first_visit_date || '';
+            mRegDate.value = s.reg_date || '';
+            mNotes.value = s.notes || '';
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        modalForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = editId.value.trim();
+            const body = {
+                name: mName.value.trim(),
+                parent_phone: mParentPhone.value.trim(),
+                birth_date: mBirthDate.value || null,
+                first_visit_date: mFirstVisitDate.value || null,
+                reg_date: mRegDate.value || null,
+                notes: mNotes.value.trim() || null,
+            };
+            const isEdit = !!id;
+            const url = '/api/students' + (isEdit ? '?id=' + id : '');
+            const method = isEdit ? 'PUT' : 'POST';
+            fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+                .then((r) => r.json())
+                .then((data) => {
+                    if (!data.ok) throw new Error(data.error || '저장 실패');
+                    closeModal();
+                    loadList();
+                })
+                .catch((err) => alert(err.message));
+        });
+
+        modalCancel.addEventListener('click', closeModal);
+        modalBackdrop.addEventListener('click', closeModal);
+
+        function doDelete(e) {
+            const id = e.target.getAttribute('data-id');
+            const name = e.target.getAttribute('data-name') || '';
+            if (!confirm('"' + name + '" 학생을 삭제할까요?')) return;
+            fetch('/api/students?id=' + id, { method: 'DELETE' })
+                .then((r) => r.json())
+                .then((data) => {
+                    if (!data.ok) throw new Error(data.error || '삭제 실패');
+                    loadList();
+                })
+                .catch((err) => alert(err.message));
+        }
+
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(loadList, 300);
+        });
+        addBtn.addEventListener('click', openAdd);
+
+        loadList();
+    </script>
+</body>
+</html>
