@@ -1,2 +1,4 @@
 .cursor/rules/project.mdc
 .vscode/settings.json
+.env
+.env.local

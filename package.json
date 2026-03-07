@@ -1,5 +1,12 @@
 {
   "name": "counselapp",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.0.0"
+  }
 }
