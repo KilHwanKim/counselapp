@@ -26,9 +26,15 @@ app.post('/api/students', studentsHandler);
 app.put('/api/students', studentsHandler);
 app.delete('/api/students', studentsHandler);
 
+const lessonsHandler = (await import('./api/lessons.js')).default;
+app.get('/api/lessons', lessonsHandler);
+app.post('/api/lessons', lessonsHandler);
+app.delete('/api/lessons', lessonsHandler);
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`  Main:     http://localhost:${PORT}/`);
   console.log(`  Students: http://localhost:${PORT}/students.html`);
+  console.log(`  Lessons:  http://localhost:${PORT}/lessons.html`);
   console.log(`  DB Test:  http://localhost:${PORT}/tests/db-connection.html`);
 });

@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>수업 관리자 - 정밀 시간표</title>
+    <style>
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        body { font-family: 'Pretendard', sans-serif; background-color: #f8fafc; display: flex; flex-direction: row; }
+
+        :root {
+            --header-height: 50px;
+            --hour-height: 112px;
+            --calendar-total-height: calc(10 * var(--hour-height));
+            --calendar-body-max-height: calc(100vh - 220px);
+        }
+
+        .main-wrap { display: flex; flex: 1; min-height: 0; flex-direction: column; min-width: 0; }
+        .main-content { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+
+        .calendar-container {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .calendar-header {
+            display: grid;
+            grid-template-columns: 60px repeat(5, 1fr);
+            height: var(--header-height);
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            align-items: center;
+            font-weight: 700;
+            color: #475569;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .calendar-body {
+            display: grid;
+            grid-template-columns: 60px 1fr;
+            overflow-y: auto;
+            max-height: var(--calendar-body-max-height);
+            min-height: 320px;
+        }
+
+        .calendar-right {
+            position: relative;
+            height: var(--calendar-total-height);
+            min-height: var(--calendar-total-height);
+        }
+
+        .time-labels {
+            display: flex;
+            flex-direction: column;
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            height: var(--calendar-total-height);
+            flex-shrink: 0;
+        }
+
+        .hour-row {
+            height: var(--hour-height);
+            min-height: var(--hour-height);
+            border-bottom: 1px solid #f1f5f9;
+            box-sizing: border-box;
+            font-size: 12px;
+            color: #94a3b8;
+            padding: 6px;
+            text-align: right;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-end;
+        }
+
+        .grid-background {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            pointer-events: none;
+        }
+
+        .grid-column {
+            flex: 1;
+            border-right: 1px solid #f1f5f9;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .grid-column .hour-row { height: var(--hour-height); min-height: var(--hour-height); border-bottom: 1px solid #f1f5f9; flex: none; }
+
+        .lesson-layer {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .lesson-slot {
+            position: relative;
+            height: 100%;
+            pointer-events: auto;
+        }
+
+        .lesson-card {
+            position: absolute;
+            left: 4px; right: 4px;
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+            font-size: 13px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            border-left: 4px solid rgba(0,0,0,0.2);
+            z-index: 10;
+            overflow: hidden;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .lesson-card:hover { transform: scale(1.02); z-index: 20; }
+
+        .lesson-card .lesson-delete-btn {
+            opacity: 0;
+            transition: opacity 0.15s;
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(239,68,68,0.9);
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            line-height: 1;
+        }
+        .lesson-card:hover .lesson-delete-btn { opacity: 1; }
+        .lesson-card .lesson-delete-btn:hover { background: #dc2626; }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+    <div class="main-wrap">
+        <header class="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6 flex-shrink-0">
+            <div class="flex items-center gap-2">
+                <span id="sidebar-toggle"></span>
+                <span class="text-sm font-medium text-gray-600">수업 등록/수정</span>
+            </div>
+        </header>
+        <main class="main-content p-6">
+            <div class="flex justify-between items-end mb-4 flex-shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">주간 수업 일정</h2>
+                    <p class="text-gray-500 text-sm">9:00 - 18:00 (높이로 시간 표시)</p>
+                </div>
+                <button type="button" id="registerBtn" class="bg-[#00c73c] text-white px-5 py-2.5 rounded-lg font-bold hover:shadow-lg transition">+ 수업 등록</button>
+            </div>
+            <div id="loadErrorBanner" class="hidden mb-3 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm"></div>
+
+            <div class="calendar-header">
+                <div></div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div>
+            </div>
+
+            <div class="calendar-container">
+                <div class="calendar-body w-full">
+                    <div class="time-labels flex-1 flex flex-col min-h-0" id="timeLabels"></div>
+                    <div class="calendar-right">
+                        <div class="grid-background" id="gridBg"></div>
+                        <div class="lesson-layer" id="lessonLayer">
+                            <div class="lesson-slot" data-day="1"></div>
+                            <div class="lesson-slot" data-day="2"></div>
+                            <div class="lesson-slot" data-day="3"></div>
+                            <div class="lesson-slot" data-day="4"></div>
+                            <div class="lesson-slot" data-day="5"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 수업 등록 모달 -->
+    <div id="slotModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/50" id="slotModalBackdrop"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6">
+                    <h3 id="slotModalTitle" class="text-lg font-bold text-gray-800 mb-4">수업 등록</h3>
+                    <input type="hidden" id="slotEditStartTime" value="">
+                    <input type="hidden" id="slotEditDay" value="">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">요일</label>
+                            <select id="slotDay" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#00c73c] focus:border-[#00c73c]">
+                                <option value="1">월</option><option value="2">화</option><option value="3">수</option><option value="4">목</option><option value="5">금</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">시작 시간</label>
+                            <div class="flex items-center gap-2">
+                                <select id="slotStartHour" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"></select>
+                                <span class="text-gray-500">시</span>
+                                <select id="slotStartMin" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"></select>
+                                <span class="text-gray-500">분</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">끝나는 시간</label>
+                            <div class="flex items-center gap-2">
+                                <select id="slotEndHour" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"></select>
+                                <span class="text-gray-500">시</span>
+                                <select id="slotEndMin" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"></select>
+                                <span class="text-gray-500">분</span>
+                            </div>
+                        </div>
+                        <div id="slotStudentRow">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">학생</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="slotStudentName" readonly placeholder="학생 선택" class="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50">
+                                <input type="hidden" id="slotStudentId" value="">
+                                <button type="button" id="slotPickStudent" class="px-4 py-2 bg-[#00c73c] hover:bg-[#00a832] text-white text-sm font-medium rounded-md">선택</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 pt-4 mt-4 border-t border-gray-200">
+                        <button type="button" id="slotSaveBtn" class="flex-1 bg-[#00c73c] hover:bg-[#00a832] text-white font-medium py-2 rounded-md">저장</button>
+                        <button type="button" id="slotCancelBtn" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 rounded-md">취소</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/sidebar.js"></script>
+    <script src="/js/student-picker.js"></script>
+    <script>
+        Sidebar.render(document.getElementById('sidebar-container'), { activeMenu: 'lessons', togglePlaceholder: document.getElementById('sidebar-toggle') });
+    </script>
+    <script>
+        const START_HOUR = 9;
+        const END_HOUR = 18;
+
+        let lessonsMap = {};
+        const timeLabels = document.getElementById('timeLabels');
+        const gridBg = document.getElementById('gridBg');
+        const lessonLayer = document.getElementById('lessonLayer');
+        const loadErrorBanner = document.getElementById('loadErrorBanner');
+        const registerBtn = document.getElementById('registerBtn');
+        const slotModal = document.getElementById('slotModal');
+        const slotModalTitle = document.getElementById('slotModalTitle');
+        const slotEditStartTime = document.getElementById('slotEditStartTime');
+        const slotEditDay = document.getElementById('slotEditDay');
+        const slotStudentRow = document.getElementById('slotStudentRow');
+        const slotDay = document.getElementById('slotDay');
+        const slotStartHour = document.getElementById('slotStartHour');
+        const slotStartMin = document.getElementById('slotStartMin');
+        const slotEndHour = document.getElementById('slotEndHour');
+        const slotEndMin = document.getElementById('slotEndMin');
+        const slotStudentName = document.getElementById('slotStudentName');
+        const slotStudentId = document.getElementById('slotStudentId');
+        const slotPickStudent = document.getElementById('slotPickStudent');
+        const slotSaveBtn = document.getElementById('slotSaveBtn');
+        const slotCancelBtn = document.getElementById('slotCancelBtn');
+        const slotModalBackdrop = document.getElementById('slotModalBackdrop');
+
+        const HOUR_OPTIONS = [];
+        for (let h = START_HOUR; h <= END_HOUR; h++) HOUR_OPTIONS.push(h);
+        const MIN_OPTIONS = [0, 10, 20, 30, 40, 50];
+        function pad2(n) { return (n < 10 ? '0' + n : '' + n); }
+
+        function buildTimeGrid() {
+            timeLabels.innerHTML = '';
+            const colFragment = document.createDocumentFragment();
+            for (let i = 0; i < 5; i++) {
+                const col = document.createElement('div');
+                col.className = 'grid-column';
+                for (let h = START_HOUR; h <= END_HOUR; h++) {
+                    const row = document.createElement('div');
+                    row.className = 'hour-row';
+                    col.appendChild(row);
+                }
+                colFragment.appendChild(col);
+            }
+            gridBg.appendChild(colFragment);
+            for (let h = START_HOUR; h <= END_HOUR; h++) {
+                const row = document.createElement('div');
+                row.className = 'hour-row';
+                row.textContent = h + ':00';
+                timeLabels.appendChild(row);
+            }
+        }
+        buildTimeGrid();
+
+        function getHourHeight() {
+            const first = timeLabels.querySelector('.hour-row');
+            return first ? first.getBoundingClientRect().height : 80;
+        }
+
+        function key(d, t) { return d + '-' + t; }
+        function nextHour(t) {
+            var parts = (t || '09:00').split(':').map(Number);
+            var h = parts[0] || 0, m = parts[1] || 0;
+            var total = h * 60 + m + 60;
+            var h2 = Math.floor(total / 60);
+            var m2 = total % 60;
+            if (h2 > END_HOUR || (h2 === END_HOUR && m2 > 0)) return pad2(END_HOUR) + ':00';
+            return pad2(h2) + ':' + pad2(m2);
+        }
+
+        function loadLessons() {
+            return fetch('/api/lessons')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (!data.ok) throw new Error(data.error || '조회 실패');
+                    lessonsMap = {};
+                    (data.lessons || []).forEach(function (l) {
+                        lessonsMap[key(l.day_of_week, l.start_time)] = l;
+                    });
+                });
+        }
+
+        function renderLessons() {
+            document.querySelectorAll('.lesson-slot').forEach(function (slot) { slot.innerHTML = ''; });
+            const hourHeight = getHourHeight();
+            const totalMinutes = (END_HOUR - START_HOUR + 1) * 60;
+
+            Object.values(lessonsMap).forEach(function (l) {
+                const daySlot = document.querySelector('.lesson-slot[data-day="' + l.day_of_week + '"]');
+                if (!daySlot) return;
+
+                const startTime = l.start_time || '09:00';
+                const endTime = l.end_time || nextHour(startTime);
+                const [sh, sm] = startTime.split(':').map(Number);
+                const [eh, em] = endTime.split(':').map(Number);
+
+                const top = ((sh - START_HOUR) * 60 + (sm || 0)) / 60 * hourHeight;
+                const durationMinutes = (eh * 60 + (em || 0)) - (sh * 60 + (sm || 0));
+                const height = Math.max(4, (durationMinutes / 60) * hourHeight - 4);
+
+                const card = document.createElement('div');
+                card.className = 'lesson-card bg-[#00c73c]';
+                card.style.top = top + 'px';
+                card.style.height = height + 'px';
+                card.setAttribute('data-day', l.day_of_week);
+                card.setAttribute('data-start-time', startTime);
+                card.innerHTML = '<div class="font-bold truncate">' + (l.student_name || '') + '</div>' +
+                    '<div class="text-[10px] opacity-90">' + startTime + ' - ' + endTime + '</div>' +
+                    '<button type="button" class="lesson-delete-btn" title="삭제">&#215;</button>';
+
+                card.addEventListener('click', function (e) {
+                    if (e.target.closest('.lesson-delete-btn')) return;
+                    openEditModal(l);
+                });
+                const deleteBtn = card.querySelector('.lesson-delete-btn');
+                deleteBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (!confirm('이 수업을 삭제할까요?')) return;
+                    fetch('/api/lessons?day_of_week=' + l.day_of_week + '&start_time=' + encodeURIComponent(startTime), { method: 'DELETE' })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            if (!data.ok) throw new Error(data.error || '삭제 실패');
+                            return loadLessons();
+                        })
+                        .then(renderLessons)
+                        .catch(function (err) { alert(err.message); });
+                });
+                daySlot.appendChild(card);
+            });
+        }
+
+        function fillHourMinSelects(startHHMM, endHHMM) {
+            var s = (startHHMM || '09:00').split(':').map(Number);
+            var e = (endHHMM || '10:00').split(':').map(Number);
+            slotStartHour.innerHTML = HOUR_OPTIONS.map(function (h) { return '<option value="' + h + '"' + (h === s[0] ? ' selected' : '') + '>' + h + '</option>'; }).join('');
+            slotStartMin.innerHTML = MIN_OPTIONS.map(function (m) { return '<option value="' + m + '"' + (m === s[1] ? ' selected' : '') + '>' + pad2(m) + '</option>'; }).join('');
+            slotEndHour.innerHTML = HOUR_OPTIONS.map(function (h) { return '<option value="' + h + '"' + (h === e[0] ? ' selected' : '') + '>' + h + '</option>'; }).join('');
+            slotEndMin.innerHTML = MIN_OPTIONS.map(function (m) { return '<option value="' + m + '"' + (m === e[1] ? ' selected' : '') + '>' + pad2(m) + '</option>'; }).join('');
+        }
+        function getStartTime() {
+            return pad2(parseInt(slotStartHour.value, 10)) + ':' + pad2(parseInt(slotStartMin.value, 10));
+        }
+        function getEndTime() {
+            return pad2(parseInt(slotEndHour.value, 10)) + ':' + pad2(parseInt(slotEndMin.value, 10));
+        }
+
+        function timeToMinutes(t) {
+            var p = (t || '00:00').split(':').map(Number);
+            return (p[0] || 0) * 60 + (p[1] || 0);
+        }
+        function overlaps(s1, e1, s2, e2) {
+            var a = timeToMinutes(s1), b = timeToMinutes(e1);
+            var c = timeToMinutes(s2), d = timeToMinutes(e2);
+            return a < d && c < b;
+        }
+        function lessonsForDay(day) {
+            return Object.keys(lessonsMap).filter(function (k) { return k.startsWith(day + '-'); }).map(function (k) { return lessonsMap[k]; });
+        }
+        function hasOverlap(day, startTime, endTime, excludeStartTime) {
+            var list = lessonsForDay(day);
+            var end = endTime || nextHour(startTime);
+            for (var i = 0; i < list.length; i++) {
+                var l = list[i];
+                if (excludeStartTime && l.start_time === excludeStartTime) continue;
+                var le = l.end_time || nextHour(l.start_time);
+                if (overlaps(startTime, end, l.start_time, le)) return true;
+            }
+            return false;
+        }
+
+        function openModal() {
+            slotModalTitle.textContent = '수업 등록';
+            slotEditStartTime.value = '';
+            slotEditDay.value = '';
+            slotStudentRow.style.display = '';
+            slotPickStudent.style.display = '';
+            slotDay.value = '1';
+            fillHourMinSelects('09:00', '10:00');
+            slotStudentId.value = '';
+            slotStudentName.value = '';
+            slotStudentName.placeholder = '학생 선택';
+            slotModal.classList.remove('hidden');
+        }
+
+        function openEditModal(lesson) {
+            slotModalTitle.textContent = '수업 수정';
+            slotEditStartTime.value = lesson.start_time || '';
+            slotEditDay.value = String(lesson.day_of_week || 1);
+            slotStudentRow.style.display = '';
+            slotPickStudent.style.display = 'none';
+            slotStudentId.value = lesson.student_id || '';
+            slotStudentName.value = lesson.student_name || '';
+            slotStudentName.placeholder = '';
+            slotDay.value = String(lesson.day_of_week || 1);
+            var endVal = lesson.end_time || nextHour(lesson.start_time);
+            fillHourMinSelects(lesson.start_time || '09:00', endVal);
+            slotModal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            slotModal.classList.add('hidden');
+        }
+
+        registerBtn.addEventListener('click', openModal);
+        slotModalBackdrop.addEventListener('click', closeModal);
+        slotCancelBtn.addEventListener('click', closeModal);
+
+        slotPickStudent.addEventListener('click', function () {
+            StudentPicker.open(function (student) {
+                slotStudentId.value = student.id;
+                slotStudentName.value = student.name || '';
+            });
+        });
+
+        slotSaveBtn.addEventListener('click', function () {
+            var day = parseInt(slotDay.value, 10);
+            var startTime = getStartTime();
+            var endTime = getEndTime();
+            var isEdit = slotEditStartTime && slotEditStartTime.value;
+            var studentId = slotStudentId.value ? parseInt(slotStudentId.value, 10) : 0;
+            if (!isEdit && !studentId) { alert('학생을 선택하세요.'); return; }
+            if (isEdit) studentId = studentId || 0;
+            if (!isEdit && !studentId) return;
+            var excludeStart = isEdit ? slotEditStartTime.value : null;
+            var originalDay = isEdit && slotEditDay && slotEditDay.value ? parseInt(slotEditDay.value, 10) : null;
+            if (hasOverlap(day, startTime, endTime, excludeStart)) {
+                alert('선택한 시간이 이미 등록된 수업과 겹칩니다. 다른 시간을 선택하세요.');
+                return;
+            }
+            function doPost(useStartTime) {
+                var st = useStartTime != null ? useStartTime : startTime;
+                return fetch('/api/lessons', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ day_of_week: day, start_time: st, end_time: endTime, student_id: studentId })
+                }).then(function (r) { return r.json(); });
+            }
+            var slotChanged = isEdit && originalDay != null && (originalDay !== day || (excludeStart && excludeStart !== startTime));
+            if (slotChanged) {
+                fetch('/api/lessons?day_of_week=' + originalDay + '&start_time=' + encodeURIComponent(excludeStart), { method: 'DELETE' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (!data.ok) throw new Error(data.error || '수정 실패');
+                        return doPost();
+                    })
+                    .then(function (data) {
+                        if (!data.ok) throw new Error(data.error || '저장 실패');
+                        return loadLessons();
+                    })
+                    .then(function () { renderLessons(); closeModal(); })
+                    .catch(function (err) { alert(err.message); });
+            } else {
+                var startToSend = (isEdit && excludeStart) ? excludeStart : startTime;
+                doPost(startToSend)
+                    .then(function (data) {
+                        if (!data.ok) throw new Error(data.error || '저장 실패');
+                        return loadLessons();
+                    })
+                    .then(function () { renderLessons(); closeModal(); })
+                    .catch(function (err) { alert(err.message); });
+            }
+        });
+
+        loadLessons()
+            .then(function () { renderLessons(); loadErrorBanner.classList.add('hidden'); })
+            .catch(function (err) {
+                loadErrorBanner.textContent = '수업 목록을 불러올 수 없습니다. (' + err.message + ')';
+                loadErrorBanner.classList.remove('hidden');
+                renderLessons();
+            });
+    </script>
+</body>
+</html>
