@@ -9,11 +9,11 @@
         body { font-family: 'Pretendard', sans-serif; background-color: #f5f6f7; }
     </style>
 </head>
-<body class="flex flex-col md:flex-row min-h-screen">
+<body class="flex flex-col md:flex-row h-screen overflow-hidden">
     <div id="sidebar-container"></div>
 
-    <div class="flex-1 flex flex-col">
-        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm flex-shrink-0">
             <div class="flex items-center gap-2">
                 <span id="sidebar-toggle"></span>
                 <span class="text-sm font-medium text-gray-600">김길환 매니저님, 환영합니다.</span>
@@ -25,7 +25,7 @@
             </div>
         </header>
 
-        <main class="flex-1 p-6 overflow-auto">
+        <main class="flex-1 p-6 overflow-hidden flex flex-col min-h-0">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <h2 class="text-xl font-bold text-gray-800">학생 관리</h2>
                 <div class="flex flex-wrap items-center gap-3">
@@ -34,8 +34,8 @@
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg shadow overflow-hidden">
-                <div class="overflow-x-auto">
+            <div class="bg-white rounded-lg shadow overflow-hidden flex-1 min-h-0 flex flex-col">
+                <div class="overflow-x-auto overflow-y-auto flex-1 min-h-0">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
@@ -52,6 +52,13 @@
                     </table>
                 </div>
                 <div id="gridEmpty" class="hidden px-4 py-8 text-center text-gray-500 text-sm">등록된 학생이 없습니다.</div>
+                <div id="paginationBar" class="hidden border-t border-gray-200 px-4 py-3 bg-gray-50 flex items-center justify-between gap-3">
+                    <p id="pageInfo" class="text-sm text-gray-600"></p>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="prevPageBtn" class="px-3 py-1.5 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">이전</button>
+                        <button type="button" id="nextPageBtn" class="px-3 py-1.5 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">다음</button>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -113,8 +120,16 @@
         const mNotes = document.getElementById('mNotes');
         const modalCancel = document.getElementById('modalCancel');
         const modalBackdrop = document.getElementById('modalBackdrop');
+        const paginationBar = document.getElementById('paginationBar');
+        const pageInfo = document.getElementById('pageInfo');
+        const prevPageBtn = document.getElementById('prevPageBtn');
+        const nextPageBtn = document.getElementById('nextPageBtn');
 
         let searchTimer = null;
+        let allStudents = [];
+        let currentPage = 1;
+        const pageSize = 10;
+
         function loadList() {
             const q = searchInput.value.trim();
             const url = q ? '/api/students?q=' + encodeURIComponent(q) : '/api/students';
@@ -122,20 +137,31 @@
                 .then((r) => r.json())
                 .then((data) => {
                     if (!data.ok) throw new Error(data.error || '목록 조회 실패');
-                    renderGrid(data.students || []);
+                    allStudents = data.students || [];
+                    currentPage = 1;
+                    renderGrid();
                 })
                 .catch((err) => {
+                    allStudents = [];
                     gridBody.innerHTML = '<tr><td colspan="8" class="px-4 py-3 text-red-600 text-sm">' + err.message + '</td></tr>';
                     gridEmpty.classList.add('hidden');
+                    paginationBar.classList.add('hidden');
                 });
         }
 
-        function renderGrid(students) {
-            if (!students.length) {
+        function renderGrid() {
+            if (!allStudents.length) {
                 gridBody.innerHTML = '';
                 gridEmpty.classList.remove('hidden');
+                paginationBar.classList.add('hidden');
                 return;
             }
+
+            const totalPages = Math.max(1, Math.ceil(allStudents.length / pageSize));
+            if (currentPage > totalPages) currentPage = totalPages;
+            const startIndex = (currentPage - 1) * pageSize;
+            const students = allStudents.slice(startIndex, startIndex + pageSize);
+
             gridEmpty.classList.add('hidden');
             gridBody.innerHTML = students
                 .map(
@@ -152,6 +178,16 @@
                 .join('');
             gridBody.querySelectorAll('.editBtn').forEach((el) => el.addEventListener('click', openEdit));
             gridBody.querySelectorAll('.deleteBtn').forEach((el) => el.addEventListener('click', doDelete));
+            renderPagination(totalPages, startIndex, students.length);
+        }
+
+        function renderPagination(totalPages, startIndex, visibleCount) {
+            paginationBar.classList.remove('hidden');
+            const from = startIndex + 1;
+            const to = startIndex + visibleCount;
+            pageInfo.textContent = from + '-' + to + ' / ' + allStudents.length + '명 · ' + currentPage + ' / ' + totalPages + '페이지';
+            prevPageBtn.disabled = currentPage <= 1;
+            nextPageBtn.disabled = currentPage >= totalPages;
         }
 
         function ageFromBirthDate(birthDateStr) {
@@ -271,6 +307,17 @@
             searchTimer = setTimeout(loadList, 300);
         });
         addBtn.addEventListener('click', openAdd);
+        prevPageBtn.addEventListener('click', () => {
+            if (currentPage <= 1) return;
+            currentPage -= 1;
+            renderGrid();
+        });
+        nextPageBtn.addEventListener('click', () => {
+            const totalPages = Math.max(1, Math.ceil(allStudents.length / pageSize));
+            if (currentPage >= totalPages) return;
+            currentPage += 1;
+            renderGrid();
+        });
 
         loadList();
     </script>
