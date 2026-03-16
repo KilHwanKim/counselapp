@@ -35,6 +35,9 @@ const actualLessonsHandler = (await import('./api/actual-lessons.js')).default;
 app.get('/api/actual-lessons', actualLessonsHandler);
 app.post('/api/actual-lessons', actualLessonsHandler);
 
+const holidaysHandler = (await import('./api/holidays.js')).default;
+app.get('/api/holidays', holidaysHandler);
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`  Main:     http://localhost:${PORT}/`);

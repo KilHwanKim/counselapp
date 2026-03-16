@@ -31,8 +31,28 @@
             background-color: #16a34a;
             color: white;
         }
+        .calendar-day.weekend-sun .day-number,
+        .calendar-day.holiday .day-number {
+            color: #dc2626;
+        }
+        .calendar-day.weekend-sat .day-number {
+            color: #2563eb;
+        }
+        .calendar-day.holiday {
+            background-image: linear-gradient(to bottom, rgba(254, 242, 242, 0.7), rgba(255, 255, 255, 0));
+        }
+        .calendar-day.holiday.selected {
+            background-image: linear-gradient(to bottom, rgba(254, 226, 226, 0.9), rgba(240, 253, 244, 0.9));
+        }
         .calendar-day.has-lessons .day-number {
             color: #111827;
+        }
+        .calendar-day.has-lessons.weekend-sun .day-number,
+        .calendar-day.has-lessons.holiday .day-number {
+            color: #dc2626;
+        }
+        .calendar-day.has-lessons.weekend-sat .day-number {
+            color: #2563eb;
         }
         .calendar-day.empty {
             cursor: default;
@@ -68,6 +88,10 @@
         .calendar-day.selected .day-preview-pill {
             background-color: #dcfce7;
             color: #166534;
+        }
+        .calendar-day.holiday .holiday-chip {
+            color: #dc2626;
+            background-color: #fef2f2;
         }
     </style>
 </head>
@@ -120,13 +144,13 @@
                     </div>
 
                     <div class="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-gray-400 mb-3">
-                        <div>일</div>
+                        <div class="text-red-500">일</div>
                         <div>월</div>
                         <div>화</div>
                         <div>수</div>
                         <div>목</div>
                         <div>금</div>
-                        <div>토</div>
+                        <div class="text-blue-500">토</div>
                     </div>
 
                     <div id="calendarGrid" class="calendar-grid gap-2 flex-1 min-h-0"></div>
@@ -189,6 +213,7 @@
         let viewMonth = now.getMonth() + 1;
         let selectedDate = todayStr;
         let lessonsByDate = {};
+        let holidaysByDate = {};
 
         function formatDate(date) {
             return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
@@ -226,6 +251,26 @@
             return map;
         }
 
+        function buildHolidayMap(items) {
+            const map = {};
+            (items || []).forEach((item) => {
+                const key = item.date || '';
+                if (!key) return;
+                map[key] = item.name || '공휴일';
+            });
+            return map;
+        }
+
+        function isSunday(dateStr) {
+            const parts = dateStr.split('-').map(Number);
+            return new Date(parts[0], parts[1] - 1, parts[2]).getDay() === 0;
+        }
+
+        function isSaturday(dateStr) {
+            const parts = dateStr.split('-').map(Number);
+            return new Date(parts[0], parts[1] - 1, parts[2]).getDay() === 6;
+        }
+
         function ensureSelectedDateInView() {
             const inView = selectedDate && selectedDate.startsWith(viewYear + '-' + String(viewMonth).padStart(2, '0'));
             if (inView) return;
@@ -241,11 +286,14 @@
             loadErrorBanner.classList.add('hidden');
             detailBody.innerHTML = '<div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-5 py-12 text-center text-gray-500">월간 수업 데이터를 불러오는 중입니다.</div>';
 
-            return fetch('/api/actual-lessons?year=' + viewYear + '&month=' + viewMonth)
-                .then((r) => r.json())
-                .then((data) => {
-                    if (!data.ok) throw new Error(data.error || '수업 목록을 불러오지 못했습니다.');
-                    lessonsByDate = buildLessonsMap(data.actual_lessons || []);
+            return Promise.all([
+                fetch('/api/actual-lessons?year=' + viewYear + '&month=' + viewMonth).then((r) => r.json()),
+                fetch('/api/holidays?year=' + viewYear).then((r) => r.json()).catch(() => ({ ok: false, holidays: [] }))
+            ])
+                .then(([lessonData, holidayData]) => {
+                    if (!lessonData.ok) throw new Error(lessonData.error || '수업 목록을 불러오지 못했습니다.');
+                    lessonsByDate = buildLessonsMap(lessonData.actual_lessons || []);
+                    holidaysByDate = holidayData && holidayData.ok ? buildHolidayMap(holidayData.holidays || []) : {};
                     ensureSelectedDateInView();
                     renderMonthSummary();
                     renderCalendar();
@@ -253,6 +301,7 @@
                 })
                 .catch((err) => {
                     lessonsByDate = {};
+                    holidaysByDate = {};
                     renderMonthSummary();
                     renderCalendar();
                     renderDetail();
@@ -285,7 +334,13 @@
 
                 const dateStr = viewYear + '-' + String(viewMonth).padStart(2, '0') + '-' + String(dayNumber).padStart(2, '0');
                 const lessons = lessonsByDate[dateStr] || [];
+                const holidayName = holidaysByDate[dateStr] || '';
+                const sunday = isSunday(dateStr);
+                const saturday = isSaturday(dateStr);
                 const previewLimit = 3;
+                const holidayLine = holidayName
+                    ? '<div class="holiday-chip inline-flex max-w-full items-center rounded-full px-2 py-1 text-[11px] font-semibold">공휴일</div>'
+                    : '';
                 const previewItems = lessons.slice(0, previewLimit).map((lesson) =>
                     '<span class="day-preview-pill">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</span>'
                 ).join('');
@@ -301,14 +356,18 @@
                 if (selectedDate === dateStr) cls += ' selected';
                 if (todayStr === dateStr) cls += ' today';
                 if (lessons.length > 0) cls += ' has-lessons';
+                if (holidayName) cls += ' holiday';
+                if (sunday) cls += ' weekend-sun';
+                if (saturday) cls += ' weekend-sat';
 
                 html += ''
-                    + '<button type="button" class="' + cls + '" data-date="' + dateStr + '">'
+                    + '<button type="button" class="' + cls + '" data-date="' + dateStr + '" title="' + escapeHtml(holidayName || dateStr) + '">'
                     + '  <div class="flex items-start justify-between gap-2 mb-3">'
                     + '      <span class="day-number inline-flex items-center justify-center min-w-[32px] h-8 rounded-full text-sm font-bold text-gray-500">' + dayNumber + '</span>'
                     + '      ' + countBadge
                     + '  </div>'
                     + '  <div class="day-preview-list flex-1 overflow-hidden">'
+                    +        holidayLine
                     +        previewItems
                     +        extraLine
                     + '  </div>'
@@ -328,10 +387,17 @@
 
         function renderDetail() {
             const items = lessonsByDate[selectedDate] || [];
+            const holidayName = holidaysByDate[selectedDate] || '';
             detailTitle.textContent = selectedDate ? formatDisplayDate(selectedDate) : '날짜를 선택하세요';
-            detailSubtitle.textContent = items.length
-                ? '해당 날짜의 실제 수업 목록입니다.'
-                : '선택한 날짜에 예정된 수업이 없습니다.';
+            if (holidayName && items.length) {
+                detailSubtitle.textContent = holidayName + ' · 해당 날짜의 실제 수업 목록입니다.';
+            } else if (holidayName) {
+                detailSubtitle.textContent = holidayName + ' · 선택한 날짜에 예정된 수업이 없습니다.';
+            } else {
+                detailSubtitle.textContent = items.length
+                    ? '해당 날짜의 실제 수업 목록입니다.'
+                    : '선택한 날짜에 예정된 수업이 없습니다.';
+            }
             detailCount.textContent = String(items.length);
             selectedDaySummary.textContent = items.length + '수업';
 
