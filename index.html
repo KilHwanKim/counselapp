@@ -4,35 +4,158 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
-    <title>상담 관리자</title>
+    <title>오늘 수업 - 상담 관리자</title>
     <style>
+        html, body { height: 100%; margin: 0; overflow: hidden; }
         body { font-family: 'Pretendard', sans-serif; background-color: #f5f6f7; }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            grid-template-rows: repeat(6, minmax(0, 1fr));
+        }
+        .calendar-day {
+            min-height: 0;
+            cursor: pointer;
+            transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        }
+        .calendar-day:hover {
+            background-color: #f8fafc;
+            border-color: #cbd5e1;
+        }
+        .calendar-day.selected {
+            border-color: #16a34a;
+            background-color: #f0fdf4;
+            box-shadow: 0 0 0 1px #16a34a, 0 8px 18px rgba(22, 163, 74, 0.12);
+        }
+        .calendar-day.today .day-number {
+            background-color: #16a34a;
+            color: white;
+        }
+        .calendar-day.has-lessons .day-number {
+            color: #111827;
+        }
+        .calendar-day.empty {
+            cursor: default;
+            background-color: #f8fafc;
+        }
+        .calendar-day.empty:hover {
+            background-color: #f8fafc;
+            border-color: #e5e7eb;
+        }
+        .preview-item {
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+        .day-preview-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .day-preview-pill {
+            min-width: 0;
+            display: block;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            border-radius: 9999px;
+            background-color: #f8fafc;
+            color: #334155;
+            padding: 3px 8px;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+        .calendar-day.selected .day-preview-pill {
+            background-color: #dcfce7;
+            color: #166534;
+        }
     </style>
 </head>
-<body class="flex flex-col md:flex-row min-h-screen">
+<body class="flex flex-col md:flex-row h-screen overflow-hidden">
     <div id="sidebar-container"></div>
 
-    <div class="flex-1 flex flex-col">
-        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm flex-shrink-0">
             <div class="flex items-center gap-2">
                 <span id="sidebar-toggle"></span>
-                <span class="text-sm font-medium text-gray-600">상담 관리자</span>
+                <span class="text-sm font-medium text-gray-600">오늘 수업</span>
             </div>
             <div class="flex items-center gap-4">
+                <a href="/lessons.html" class="text-sm text-gray-500 hover:text-gray-700">수업 등록/수정</a>
                 <a href="/tests/db-connection.html" class="text-sm text-gray-500 hover:text-gray-700">DB 연결 테스트</a>
             </div>
         </header>
 
-        <main class="flex-1 p-6 overflow-auto">
-            <h2 class="text-xl font-bold text-gray-800 mb-4">환영합니다</h2>
-            <p class="text-gray-600 mb-6">좌측 메뉴에서 기능을 선택하세요.</p>
-            <div class="grid gap-3 max-w-sm">
-                <a href="/students.html" class="block px-4 py-3 rounded-lg bg-[#00c73c] text-white font-medium hover:bg-[#00a832] transition">
-                    학생 등록/조회
-                </a>
-                <a href="/tests/db-connection.html" class="block px-4 py-3 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition">
-                    DB 연결 테스트
-                </a>
+        <main class="flex-1 p-4 md:p-6 overflow-hidden min-h-0">
+            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.9fr)] gap-4 h-full min-h-0">
+                <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:p-6 flex flex-col min-h-0">
+                    <div class="flex items-start justify-between gap-4 mb-5">
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold tracking-[0.18em] text-gray-400 uppercase mb-2">Monthly Calendar</p>
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <h2 id="monthTitle" class="text-[28px] leading-none font-bold text-gray-900"></h2>
+                                <button type="button" id="goTodayBtn" class="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-3 py-1 text-sm font-medium text-[#00a832] hover:bg-green-100">오늘</button>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-2">날짜를 선택하면 오른쪽에 실제 수업 상세가 표시됩니다.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" id="prevMonthBtn" class="w-10 h-10 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50">◀</button>
+                            <button type="button" id="nextMonthBtn" class="w-10 h-10 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50">▶</button>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <p class="text-xs font-medium text-gray-500">이번 달 실제 수업</p>
+                            <p id="monthLessonCount" class="text-lg font-bold text-gray-900 mt-1">0건</p>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                            <p class="text-xs font-medium text-gray-500">수업 있는 날짜</p>
+                            <p id="monthActiveDays" class="text-lg font-bold text-gray-900 mt-1">0일</p>
+                        </div>
+                        <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 md:block hidden">
+                            <p class="text-xs font-medium text-gray-500">선택 상태</p>
+                            <p id="selectedDaySummary" class="text-lg font-bold text-[#00a832] mt-1">0수업</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-gray-400 mb-3">
+                        <div>일</div>
+                        <div>월</div>
+                        <div>화</div>
+                        <div>수</div>
+                        <div>목</div>
+                        <div>금</div>
+                        <div>토</div>
+                    </div>
+
+                    <div id="calendarGrid" class="calendar-grid gap-2 flex-1 min-h-0"></div>
+                </section>
+
+                <section class="min-w-0 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden min-h-0">
+                    <div class="p-4 md:p-5 border-b border-gray-200 flex-shrink-0">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="min-w-0">
+                                <p class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase mb-2">Day Detail</p>
+                                <h3 id="detailTitle" class="text-xl font-bold text-gray-900">날짜를 선택하세요</h3>
+                                <p id="detailSubtitle" class="text-sm text-gray-500 mt-1">달력에서 날짜를 클릭해 주세요.</p>
+                            </div>
+                            <div class="shrink-0 rounded-2xl bg-green-50 px-4 py-3 text-center min-w-[88px]">
+                                <p class="text-[11px] font-medium text-gray-500">총 수업 수</p>
+                                <p id="detailCount" class="text-2xl font-bold text-[#00a832] leading-none mt-1">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-4 md:p-5 min-h-0 bg-gray-50/60">
+                        <div id="loadErrorBanner" class="hidden mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
+                        <div id="detailBody" class="space-y-2.5">
+                            <div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">
+                                월간 수업 데이터를 불러오면 여기에 날짜별 상세가 표시됩니다.
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
         </main>
     </div>
@@ -43,6 +166,224 @@
             activeMenu: null,
             togglePlaceholder: document.getElementById('sidebar-toggle')
         });
+    </script>
+    <script>
+        const monthTitle = document.getElementById('monthTitle');
+        const calendarGrid = document.getElementById('calendarGrid');
+        const detailTitle = document.getElementById('detailTitle');
+        const detailSubtitle = document.getElementById('detailSubtitle');
+        const detailCount = document.getElementById('detailCount');
+        const detailBody = document.getElementById('detailBody');
+        const loadErrorBanner = document.getElementById('loadErrorBanner');
+        const prevMonthBtn = document.getElementById('prevMonthBtn');
+        const nextMonthBtn = document.getElementById('nextMonthBtn');
+        const goTodayBtn = document.getElementById('goTodayBtn');
+        const monthLessonCount = document.getElementById('monthLessonCount');
+        const monthActiveDays = document.getElementById('monthActiveDays');
+        const selectedDaySummary = document.getElementById('selectedDaySummary');
+
+        const now = new Date();
+        const todayStr = formatDate(now);
+
+        let viewYear = now.getFullYear();
+        let viewMonth = now.getMonth() + 1;
+        let selectedDate = todayStr;
+        let lessonsByDate = {};
+
+        function formatDate(date) {
+            return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        }
+
+        function formatDisplayDate(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-').map(Number);
+            if (parts.length !== 3) return dateStr;
+            const date = new Date(parts[0], parts[1] - 1, parts[2]);
+            const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+            return parts[0] + '년 ' + parts[1] + '월 ' + parts[2] + '일 (' + weekdays[date.getDay()] + ')';
+        }
+
+        function escapeHtml(value) {
+            if (value == null) return '';
+            const div = document.createElement('div');
+            div.textContent = String(value);
+            return div.innerHTML;
+        }
+
+        function compareLessons(a, b) {
+            return String(a.start_time || '').localeCompare(String(b.start_time || ''));
+        }
+
+        function buildLessonsMap(items) {
+            const map = {};
+            (items || []).forEach((item) => {
+                const key = item.lesson_date || '';
+                if (!key) return;
+                if (!map[key]) map[key] = [];
+                map[key].push(item);
+            });
+            Object.keys(map).forEach((key) => map[key].sort(compareLessons));
+            return map;
+        }
+
+        function ensureSelectedDateInView() {
+            const inView = selectedDate && selectedDate.startsWith(viewYear + '-' + String(viewMonth).padStart(2, '0'));
+            if (inView) return;
+            if (viewYear === now.getFullYear() && viewMonth === now.getMonth() + 1) {
+                selectedDate = todayStr;
+            } else {
+                selectedDate = viewYear + '-' + String(viewMonth).padStart(2, '0') + '-01';
+            }
+        }
+
+        function loadMonthLessons() {
+            monthTitle.textContent = viewYear + '년 ' + viewMonth + '월';
+            loadErrorBanner.classList.add('hidden');
+            detailBody.innerHTML = '<div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-5 py-12 text-center text-gray-500">월간 수업 데이터를 불러오는 중입니다.</div>';
+
+            return fetch('/api/actual-lessons?year=' + viewYear + '&month=' + viewMonth)
+                .then((r) => r.json())
+                .then((data) => {
+                    if (!data.ok) throw new Error(data.error || '수업 목록을 불러오지 못했습니다.');
+                    lessonsByDate = buildLessonsMap(data.actual_lessons || []);
+                    ensureSelectedDateInView();
+                    renderMonthSummary();
+                    renderCalendar();
+                    renderDetail();
+                })
+                .catch((err) => {
+                    lessonsByDate = {};
+                    renderMonthSummary();
+                    renderCalendar();
+                    renderDetail();
+                    loadErrorBanner.textContent = err.message || '수업 목록을 불러오지 못했습니다.';
+                    loadErrorBanner.classList.remove('hidden');
+                });
+        }
+
+        function renderMonthSummary() {
+            const totalLessonCount = Object.values(lessonsByDate).reduce((sum, items) => sum + items.length, 0);
+            const activeDayCount = Object.keys(lessonsByDate).length;
+            monthLessonCount.textContent = totalLessonCount + '건';
+            monthActiveDays.textContent = activeDayCount + '일';
+            const selectedCount = (lessonsByDate[selectedDate] || []).length;
+            selectedDaySummary.textContent = selectedCount + '수업';
+        }
+
+        function renderCalendar() {
+            const firstDate = new Date(viewYear, viewMonth - 1, 1);
+            const firstDay = firstDate.getDay();
+            const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+            let html = '';
+            for (let i = 0; i < 42; i++) {
+                const dayNumber = i - firstDay + 1;
+                if (dayNumber < 1 || dayNumber > daysInMonth) {
+                    html += '<div class="calendar-day empty border border-gray-200 rounded-2xl p-3"></div>';
+                    continue;
+                }
+
+                const dateStr = viewYear + '-' + String(viewMonth).padStart(2, '0') + '-' + String(dayNumber).padStart(2, '0');
+                const lessons = lessonsByDate[dateStr] || [];
+                const previewLimit = 3;
+                const previewItems = lessons.slice(0, previewLimit).map((lesson) =>
+                    '<span class="day-preview-pill">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</span>'
+                ).join('');
+                const hiddenCount = lessons.length - Math.min(lessons.length, previewLimit);
+                const extraLine = hiddenCount > 0
+                    ? '<div class="text-[11px] leading-4 text-[#00a832] font-semibold pl-1">+' + hiddenCount + '명 더 있음</div>'
+                    : '';
+                const countBadge = lessons.length > 0
+                    ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-[11px] font-semibold text-[#00a832]">' + lessons.length + '수업</span>'
+                    : '<span class="text-[11px] text-gray-300">비어 있음</span>';
+
+                let cls = 'calendar-day border border-gray-200 rounded-2xl p-3 flex flex-col overflow-hidden text-left';
+                if (selectedDate === dateStr) cls += ' selected';
+                if (todayStr === dateStr) cls += ' today';
+                if (lessons.length > 0) cls += ' has-lessons';
+
+                html += ''
+                    + '<button type="button" class="' + cls + '" data-date="' + dateStr + '">'
+                    + '  <div class="flex items-start justify-between gap-2 mb-3">'
+                    + '      <span class="day-number inline-flex items-center justify-center min-w-[32px] h-8 rounded-full text-sm font-bold text-gray-500">' + dayNumber + '</span>'
+                    + '      ' + countBadge
+                    + '  </div>'
+                    + '  <div class="day-preview-list flex-1 overflow-hidden">'
+                    +        previewItems
+                    +        extraLine
+                    + '  </div>'
+                    + '</button>';
+            }
+
+            calendarGrid.innerHTML = html;
+            calendarGrid.querySelectorAll('[data-date]').forEach((el) => {
+                el.addEventListener('click', () => {
+                    selectedDate = el.getAttribute('data-date');
+                    renderMonthSummary();
+                    renderCalendar();
+                    renderDetail();
+                });
+            });
+        }
+
+        function renderDetail() {
+            const items = lessonsByDate[selectedDate] || [];
+            detailTitle.textContent = selectedDate ? formatDisplayDate(selectedDate) : '날짜를 선택하세요';
+            detailSubtitle.textContent = items.length
+                ? '해당 날짜의 실제 수업 목록입니다.'
+                : '선택한 날짜에 예정된 수업이 없습니다.';
+            detailCount.textContent = String(items.length);
+            selectedDaySummary.textContent = items.length + '수업';
+
+            if (!selectedDate) {
+                detailBody.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">날짜를 선택해 주세요.</div>';
+                return;
+            }
+
+            if (!items.length) {
+                detailBody.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">이 날짜에는 등록된 실제 수업이 없습니다.</div>';
+                return;
+            }
+
+            detailBody.innerHTML = items.map((lesson) => {
+                const timeText = (lesson.start_time || '') && (lesson.end_time || '')
+                    ? lesson.start_time + ' - ' + lesson.end_time
+                    : (lesson.start_time || '-');
+                return ''
+                    + '<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">'
+                    + '  <div class="flex items-center justify-between gap-3">'
+                    + '      <div class="min-w-0">'
+                    + '          <p class="text-sm font-bold text-gray-900">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</p>'
+                    + '          <p class="text-xs text-gray-500 mt-1">실제 수업 일정</p>'
+                    + '      </div>'
+                    + '      <div class="shrink-0 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-[#00a832]">' + escapeHtml(timeText) + '</div>'
+                    + '  </div>'
+                    + '</div>';
+            }).join('');
+        }
+
+        function moveMonth(offset) {
+            const next = new Date(viewYear, viewMonth - 1 + offset, 1);
+            viewYear = next.getFullYear();
+            viewMonth = next.getMonth() + 1;
+            if (viewYear === now.getFullYear() && viewMonth === now.getMonth() + 1) {
+                selectedDate = todayStr;
+            } else {
+                selectedDate = viewYear + '-' + String(viewMonth).padStart(2, '0') + '-01';
+            }
+            loadMonthLessons();
+        }
+
+        prevMonthBtn.addEventListener('click', () => moveMonth(-1));
+        nextMonthBtn.addEventListener('click', () => moveMonth(1));
+        goTodayBtn.addEventListener('click', () => {
+            viewYear = now.getFullYear();
+            viewMonth = now.getMonth() + 1;
+            selectedDate = todayStr;
+            loadMonthLessons();
+        });
+
+        loadMonthLessons();
     </script>
 </body>
 </html>
