@@ -84,6 +84,7 @@
             padding: 3px 8px;
             font-size: 11px;
             line-height: 1.2;
+            border-left: 3px solid transparent;
         }
         .calendar-day.selected .day-preview-pill {
             background-color: #dcfce7;
@@ -214,6 +215,7 @@
         let selectedDate = todayStr;
         let lessonsByDate = {};
         let holidaysByDate = {};
+        const LESSON_COLOR_PALETTE = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#14B8A6', '#EC4899', '#6366F1', '#84CC16', '#F97316'];
 
         function formatDate(date) {
             return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
@@ -237,6 +239,56 @@
 
         function compareLessons(a, b) {
             return String(a.start_time || '').localeCompare(String(b.start_time || ''));
+        }
+
+        function hashString(value) {
+            var str = String(value || '');
+            var hash = 0;
+            for (var i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+            }
+            return Math.abs(hash);
+        }
+
+        function normalizeHexColor(color) {
+            var value = String(color || '').trim().toUpperCase();
+            return /^#[0-9A-F]{6}$/.test(value) ? value : '';
+        }
+
+        function hexToRgb(hex) {
+            var normalized = normalizeHexColor(hex);
+            if (!normalized) return null;
+            return {
+                r: parseInt(normalized.slice(1, 3), 16),
+                g: parseInt(normalized.slice(3, 5), 16),
+                b: parseInt(normalized.slice(5, 7), 16)
+            };
+        }
+
+        function colorWithAlpha(hex, alpha) {
+            var rgb = hexToRgb(hex);
+            if (!rgb) return 'rgba(248,250,252,1)';
+            return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
+        }
+
+        function darkenColor(hex, ratio) {
+            var rgb = hexToRgb(hex);
+            if (!rgb) return '#1F2937';
+            var factor = 1 - (ratio || 0.22);
+            var r = Math.max(0, Math.min(255, Math.round(rgb.r * factor)));
+            var g = Math.max(0, Math.min(255, Math.round(rgb.g * factor)));
+            var b = Math.max(0, Math.min(255, Math.round(rgb.b * factor)));
+            return '#' + [r, g, b].map(function (v) { return v.toString(16).padStart(2, '0'); }).join('').toUpperCase();
+        }
+
+        function getFallbackLessonColor(lesson) {
+            var seed = lesson && lesson.student_id ? String(lesson.student_id) : String((lesson && lesson.student_name) || '');
+            return LESSON_COLOR_PALETTE[hashString(seed) % LESSON_COLOR_PALETTE.length];
+        }
+
+        function getLessonColor(lesson) {
+            return normalizeHexColor(lesson && lesson.color) || getFallbackLessonColor(lesson);
         }
 
         function buildLessonsMap(items) {
@@ -342,7 +394,7 @@
                     ? '<div class="holiday-chip inline-flex max-w-full items-center rounded-full px-2 py-1 text-[11px] font-semibold">공휴일</div>'
                     : '';
                 const previewItems = lessons.slice(0, previewLimit).map((lesson) =>
-                    '<span class="day-preview-pill">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</span>'
+                    '<span class="day-preview-pill" style="background-color:' + colorWithAlpha(getLessonColor(lesson), 0.12) + ';border-left-color:' + getLessonColor(lesson) + ';color:' + darkenColor(getLessonColor(lesson), 0.28) + ';">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</span>'
                 ).join('');
                 const hiddenCount = lessons.length - Math.min(lessons.length, previewLimit);
                 const extraLine = hiddenCount > 0
@@ -415,14 +467,15 @@
                 const timeText = (lesson.start_time || '') && (lesson.end_time || '')
                     ? lesson.start_time + ' - ' + lesson.end_time
                     : (lesson.start_time || '-');
+                const lessonColor = getLessonColor(lesson);
                 return ''
-                    + '<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">'
+                    + '<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" style="border-left:4px solid ' + lessonColor + ';">'
                     + '  <div class="flex items-center justify-between gap-3">'
                     + '      <div class="min-w-0">'
                     + '          <p class="text-sm font-bold text-gray-900">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</p>'
                     + '          <p class="text-xs text-gray-500 mt-1">실제 수업 일정</p>'
                     + '      </div>'
-                    + '      <div class="shrink-0 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-[#00a832]">' + escapeHtml(timeText) + '</div>'
+                    + '      <div class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold" style="background-color:' + colorWithAlpha(lessonColor, 0.14) + ';color:' + darkenColor(lessonColor, 0.28) + ';">' + escapeHtml(timeText) + '</div>'
                     + '  </div>'
                     + '</div>';
             }).join('');

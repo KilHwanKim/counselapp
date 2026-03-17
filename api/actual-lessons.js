@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       }
       const rows = await sql`
         SELECT al.id, al.lesson_id, al.lesson_date, al.created_at,
-               l.day_of_week, l.start_time, l.end_time, l.student_id,
+               l.day_of_week, l.start_time, l.end_time, l.student_id, l.color,
                s.name AS student_name
         FROM actual_lessons al
         JOIN lessons l ON l.id = al.lesson_id
@@ -55,6 +55,7 @@ export default async function handler(req, res) {
         day_of_week: r.day_of_week,
         start_time: r.start_time ? String(r.start_time).slice(0, 5) : '',
         end_time: r.end_time ? String(r.end_time).slice(0, 5) : '',
+        color: r.color || '',
         student_id: r.student_id,
         student_name: r.student_name || '',
         created_at: r.created_at ? String(r.created_at) : '',

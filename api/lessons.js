@@ -17,6 +17,12 @@ function parseTime(s) {
   return (h < 10 ? '0' + h : '' + h) + ':' + (m < 10 ? '0' + m : '' + m);
 }
 
+function parseColor(value) {
+  const color = String(value || '').trim();
+  if (!color) return null;
+  return /^#[0-9A-Fa-f]{6}$/.test(color) ? color.toUpperCase() : null;
+}
+
 function timeToMinutes(t) {
   if (!t) return 0;
   const [h, m] = String(t).split(':').map(Number);
@@ -43,7 +49,7 @@ export default async function handler(req, res) {
   try {
     if (method === 'GET') {
       const rows = await sql`
-        SELECT l.id, l.student_id, l.day_of_week, l.start_time, l.end_time, l.created_at, l.updated_at,
+        SELECT l.id, l.student_id, l.day_of_week, l.start_time, l.end_time, l.color, l.created_at, l.updated_at,
                s.name AS student_name
         FROM lessons l
         LEFT JOIN students s ON s.id = l.student_id
@@ -55,6 +61,7 @@ export default async function handler(req, res) {
         day_of_week: r.day_of_week,
         start_time: r.start_time ? String(r.start_time).slice(0, 5) : '',
         end_time: r.end_time ? String(r.end_time).slice(0, 5) : '',
+        color: r.color || '',
         student_name: r.student_name || '',
         created_at: r.created_at ? String(r.created_at) : '',
         updated_at: r.updated_at ? String(r.updated_at) : '',
@@ -67,6 +74,7 @@ export default async function handler(req, res) {
       const dayOfWeek = body.day_of_week != null ? parseInt(String(body.day_of_week), 10) : NaN;
       const startTime = parseTime(body.start_time);
       const endTime = body.end_time != null ? parseTime(body.end_time) : null;
+      const color = parseColor(body.color);
       const studentId = body.student_id != null ? parseInt(String(body.student_id), 10) : NaN;
       if (!Number.isInteger(dayOfWeek) || dayOfWeek < 1 || dayOfWeek > 7) {
         return res.status(400).json({ ok: false, error: 'day_of_week must be 1-7' });
@@ -74,6 +82,9 @@ export default async function handler(req, res) {
       if (!startTime) return res.status(400).json({ ok: false, error: 'start_time invalid (e.g. 14:00)' });
       if (!Number.isInteger(studentId) || studentId < 1) {
         return res.status(400).json({ ok: false, error: 'student_id is required' });
+      }
+      if (body.color != null && String(body.color).trim() && !color) {
+        return res.status(400).json({ ok: false, error: 'color invalid (#RRGGBB)' });
       }
 
       const endTimeNorm = endTime || (() => {
@@ -108,13 +119,13 @@ export default async function handler(req, res) {
       `;
       if (existing && existing.length > 0) {
         await sql`
-          UPDATE lessons SET student_id = ${studentId}, end_time = ${endTime}, updated_at = NOW()
+          UPDATE lessons SET student_id = ${studentId}, end_time = ${endTime}, color = ${color}, updated_at = NOW()
           WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
         `;
       } else {
         await sql`
-          INSERT INTO lessons (student_id, day_of_week, start_time, end_time)
-          VALUES (${studentId}, ${dayOfWeek}, ${startTime}, ${endTime})
+          INSERT INTO lessons (student_id, day_of_week, start_time, end_time, color)
+          VALUES (${studentId}, ${dayOfWeek}, ${startTime}, ${endTime}, ${color})
         `;
       }
       return res.status(200).json({ ok: true });
