@@ -9,6 +9,22 @@ function getBody(req) {
   return {};
 }
 
+function toDateString(value) {
+  if (value == null) return '';
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return '';
+    return value.getFullYear() + '-' + String(value.getMonth() + 1).padStart(2, '0') + '-' + String(value.getDate()).padStart(2, '0');
+  }
+  const s = String(value).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : '';
+}
+
+function parseStatus(value) {
+  const status = String(value || '').trim().toLowerCase();
+  if (status === 'cancelled') return 'cancelled';
+  return 'scheduled';
+}
+
 // day_of_week: 1=Mon .. 7=Sun (DB). JS getDay(): 0=Sun, 1=Mon, .. 6=Sat
 function toJsDay(dayOfWeek) {
   return dayOfWeek === 7 ? 0 : dayOfWeek;
@@ -39,7 +55,7 @@ export default async function handler(req, res) {
         toDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       }
       const rows = await sql`
-        SELECT al.id, al.lesson_id, al.lesson_date, al.created_at,
+        SELECT al.id, al.lesson_id, al.lesson_date, al.created_at, al.status,
                l.day_of_week, l.start_time, l.end_time, l.student_id, l.color,
                s.name AS student_name
         FROM actual_lessons al
@@ -51,7 +67,8 @@ export default async function handler(req, res) {
       const list = (rows || []).map((r) => ({
         id: r.id,
         lesson_id: r.lesson_id,
-        lesson_date: r.lesson_date ? String(r.lesson_date).slice(0, 10) : '',
+        lesson_date: toDateString(r.lesson_date),
+        status: r.status || 'scheduled',
         day_of_week: r.day_of_week,
         start_time: r.start_time ? String(r.start_time).slice(0, 5) : '',
         end_time: r.end_time ? String(r.end_time).slice(0, 5) : '',
@@ -91,6 +108,33 @@ export default async function handler(req, res) {
         }
       }
       return res.status(200).json({ ok: true, inserted });
+    }
+
+    if (method === 'PATCH') {
+      const body = getBody(req);
+      const idParam = req.query && req.query.id != null ? parseInt(String(req.query.id), 10) : NaN;
+      const dateParam = req.query && req.query.date ? String(req.query.date).trim() : '';
+      const status = parseStatus(body.status);
+
+      if (Number.isInteger(idParam) && idParam > 0) {
+        await sql`
+          UPDATE actual_lessons
+          SET status = ${status}
+          WHERE id = ${idParam}
+        `;
+        return res.status(200).json({ ok: true });
+      }
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+        await sql`
+          UPDATE actual_lessons
+          SET status = ${status}
+          WHERE lesson_date = ${dateParam}
+        `;
+        return res.status(200).json({ ok: true });
+      }
+
+      return res.status(400).json({ ok: false, error: 'id or date (YYYY-MM-DD) is required' });
     }
 
     return res.status(405).json({ ok: false, error: 'Method not allowed' });

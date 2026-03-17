@@ -291,6 +291,14 @@
             return normalizeHexColor(lesson && lesson.color) || getFallbackLessonColor(lesson);
         }
 
+        function getScheduledLessons(items) {
+            return (items || []).filter((item) => (item.status || 'scheduled') !== 'cancelled');
+        }
+
+        function getCancelledLessons(items) {
+            return (items || []).filter((item) => (item.status || 'scheduled') === 'cancelled');
+        }
+
         function buildLessonsMap(items) {
             const map = {};
             (items || []).forEach((item) => {
@@ -363,11 +371,11 @@
         }
 
         function renderMonthSummary() {
-            const totalLessonCount = Object.values(lessonsByDate).reduce((sum, items) => sum + items.length, 0);
-            const activeDayCount = Object.keys(lessonsByDate).length;
+            const totalLessonCount = Object.values(lessonsByDate).reduce((sum, items) => sum + getScheduledLessons(items).length, 0);
+            const activeDayCount = Object.values(lessonsByDate).filter((items) => getScheduledLessons(items).length > 0).length;
             monthLessonCount.textContent = totalLessonCount + '건';
             monthActiveDays.textContent = activeDayCount + '일';
-            const selectedCount = (lessonsByDate[selectedDate] || []).length;
+            const selectedCount = getScheduledLessons(lessonsByDate[selectedDate] || []).length;
             selectedDaySummary.textContent = selectedCount + '수업';
         }
 
@@ -386,6 +394,7 @@
 
                 const dateStr = viewYear + '-' + String(viewMonth).padStart(2, '0') + '-' + String(dayNumber).padStart(2, '0');
                 const lessons = lessonsByDate[dateStr] || [];
+                const scheduledLessons = getScheduledLessons(lessons);
                 const holidayName = holidaysByDate[dateStr] || '';
                 const sunday = isSunday(dateStr);
                 const saturday = isSaturday(dateStr);
@@ -393,21 +402,21 @@
                 const holidayLine = holidayName
                     ? '<div class="holiday-chip inline-flex max-w-full items-center rounded-full px-2 py-1 text-[11px] font-semibold">공휴일</div>'
                     : '';
-                const previewItems = lessons.slice(0, previewLimit).map((lesson) =>
+                const previewItems = scheduledLessons.slice(0, previewLimit).map((lesson) =>
                     '<span class="day-preview-pill" style="background-color:' + colorWithAlpha(getLessonColor(lesson), 0.12) + ';border-left-color:' + getLessonColor(lesson) + ';color:' + darkenColor(getLessonColor(lesson), 0.28) + ';">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</span>'
                 ).join('');
-                const hiddenCount = lessons.length - Math.min(lessons.length, previewLimit);
+                const hiddenCount = scheduledLessons.length - Math.min(scheduledLessons.length, previewLimit);
                 const extraLine = hiddenCount > 0
                     ? '<div class="text-[11px] leading-4 text-[#00a832] font-semibold pl-1">+' + hiddenCount + '명 더 있음</div>'
                     : '';
-                const countBadge = lessons.length > 0
-                    ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-[11px] font-semibold text-[#00a832]">' + lessons.length + '수업</span>'
+                const countBadge = scheduledLessons.length > 0
+                    ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-[11px] font-semibold text-[#00a832]">' + scheduledLessons.length + '수업</span>'
                     : '<span class="text-[11px] text-gray-300">비어 있음</span>';
 
                 let cls = 'calendar-day border border-gray-200 rounded-2xl p-3 flex flex-col overflow-hidden text-left';
                 if (selectedDate === dateStr) cls += ' selected';
                 if (todayStr === dateStr) cls += ' today';
-                if (lessons.length > 0) cls += ' has-lessons';
+                if (scheduledLessons.length > 0) cls += ' has-lessons';
                 if (holidayName) cls += ' holiday';
                 if (sunday) cls += ' weekend-sun';
                 if (saturday) cls += ' weekend-sat';
@@ -437,21 +446,41 @@
             });
         }
 
+        function updateActualLessonStatus(id, status) {
+            return fetch('/api/actual-lessons?id=' + id, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: status })
+            })
+                .then((r) => r.json())
+                .then((data) => {
+                    if (!data.ok) throw new Error(data.error || '상태 변경 실패');
+                    const items = lessonsByDate[selectedDate] || [];
+                    const target = items.find((item) => item.id === id);
+                    if (target) target.status = status;
+                    renderMonthSummary();
+                    renderCalendar();
+                    renderDetail();
+                });
+        }
+
         function renderDetail() {
             const items = lessonsByDate[selectedDate] || [];
+            const scheduledItems = getScheduledLessons(items);
+            const cancelledItems = getCancelledLessons(items);
             const holidayName = holidaysByDate[selectedDate] || '';
             detailTitle.textContent = selectedDate ? formatDisplayDate(selectedDate) : '날짜를 선택하세요';
-            if (holidayName && items.length) {
+            if (holidayName && scheduledItems.length) {
                 detailSubtitle.textContent = holidayName + ' · 해당 날짜의 실제 수업 목록입니다.';
             } else if (holidayName) {
                 detailSubtitle.textContent = holidayName + ' · 선택한 날짜에 예정된 수업이 없습니다.';
             } else {
-                detailSubtitle.textContent = items.length
+                detailSubtitle.textContent = scheduledItems.length
                     ? '해당 날짜의 실제 수업 목록입니다.'
                     : '선택한 날짜에 예정된 수업이 없습니다.';
             }
-            detailCount.textContent = String(items.length);
-            selectedDaySummary.textContent = items.length + '수업';
+            detailCount.textContent = String(scheduledItems.length);
+            selectedDaySummary.textContent = scheduledItems.length + '수업';
 
             if (!selectedDate) {
                 detailBody.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">날짜를 선택해 주세요.</div>';
@@ -463,22 +492,69 @@
                 return;
             }
 
-            detailBody.innerHTML = items.map((lesson) => {
-                const timeText = (lesson.start_time || '') && (lesson.end_time || '')
-                    ? lesson.start_time + ' - ' + lesson.end_time
-                    : (lesson.start_time || '-');
-                const lessonColor = getLessonColor(lesson);
-                return ''
-                    + '<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" style="border-left:4px solid ' + lessonColor + ';">'
-                    + '  <div class="flex items-center justify-between gap-3">'
-                    + '      <div class="min-w-0">'
-                    + '          <p class="text-sm font-bold text-gray-900">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</p>'
-                    + '          <p class="text-xs text-gray-500 mt-1">실제 수업 일정</p>'
-                    + '      </div>'
-                    + '      <div class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold" style="background-color:' + colorWithAlpha(lessonColor, 0.14) + ';color:' + darkenColor(lessonColor, 0.28) + ';">' + escapeHtml(timeText) + '</div>'
-                    + '  </div>'
-                    + '</div>';
-            }).join('');
+            let html = '';
+
+            if (scheduledItems.length > 0) {
+                html += '<div class="mb-3 flex items-center justify-between"><p class="text-xs font-semibold tracking-[0.14em] text-gray-400 uppercase">Scheduled</p><span class="text-xs font-medium text-[#00a832]">' + scheduledItems.length + '건</span></div>';
+                html += scheduledItems.map((lesson) => {
+                    const timeText = (lesson.start_time || '') && (lesson.end_time || '')
+                        ? lesson.start_time + ' - ' + lesson.end_time
+                        : (lesson.start_time || '-');
+                    const lessonColor = getLessonColor(lesson);
+                    return ''
+                        + '<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" style="border-left:4px solid ' + lessonColor + ';">'
+                        + '  <div class="flex items-center justify-between gap-3">'
+                        + '      <div class="min-w-0">'
+                        + '          <p class="text-sm font-bold text-gray-900">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</p>'
+                        + '          <p class="text-xs text-gray-500 mt-1">실제 수업 일정</p>'
+                        + '      </div>'
+                        + '      <div class="flex items-center gap-2 shrink-0">'
+                        + '          <div class="rounded-full px-3 py-1 text-xs font-semibold" style="background-color:' + colorWithAlpha(lessonColor, 0.14) + ';color:' + darkenColor(lessonColor, 0.28) + ';">' + escapeHtml(timeText) + '</div>'
+                        + '          <button type="button" class="cancel-lesson-btn rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100" data-id="' + lesson.id + '">취소</button>'
+                        + '      </div>'
+                        + '  </div>'
+                        + '</div>';
+                }).join('');
+            }
+
+            if (cancelledItems.length > 0) {
+                html += '<div class="' + (scheduledItems.length ? 'mt-5 ' : '') + 'mb-3 flex items-center justify-between"><p class="text-xs font-semibold tracking-[0.14em] text-gray-400 uppercase">Cancelled</p><span class="text-xs font-medium text-gray-500">' + cancelledItems.length + '건</span></div>';
+                html += cancelledItems.map((lesson) => {
+                    const timeText = (lesson.start_time || '') && (lesson.end_time || '')
+                        ? lesson.start_time + ' - ' + lesson.end_time
+                        : (lesson.start_time || '-');
+                    const lessonColor = getLessonColor(lesson);
+                    return ''
+                        + '<div class="rounded-xl border border-gray-200 bg-white/90 px-4 py-3 shadow-sm opacity-80" style="border-left:4px solid ' + lessonColor + ';">'
+                        + '  <div class="flex items-center justify-between gap-3">'
+                        + '      <div class="min-w-0">'
+                        + '          <p class="text-sm font-bold text-gray-700">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</p>'
+                        + '          <p class="text-xs text-gray-500 mt-1">취소된 실제 수업</p>'
+                        + '      </div>'
+                        + '      <div class="flex items-center gap-2 shrink-0">'
+                        + '          <div class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">' + escapeHtml(timeText) + '</div>'
+                        + '          <button type="button" class="restore-lesson-btn rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200" data-id="' + lesson.id + '">복구</button>'
+                        + '      </div>'
+                        + '  </div>'
+                        + '</div>';
+                }).join('');
+            }
+
+            detailBody.innerHTML = html || '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">이 날짜에는 표시할 수업이 없습니다.</div>';
+
+            detailBody.querySelectorAll('.cancel-lesson-btn').forEach((button) => {
+                button.addEventListener('click', () => {
+                    updateActualLessonStatus(parseInt(button.getAttribute('data-id'), 10), 'cancelled')
+                        .catch((err) => alert(err.message || '취소 실패'));
+                });
+            });
+
+            detailBody.querySelectorAll('.restore-lesson-btn').forEach((button) => {
+                button.addEventListener('click', () => {
+                    updateActualLessonStatus(parseInt(button.getAttribute('data-id'), 10), 'scheduled')
+                        .catch((err) => alert(err.message || '복구 실패'));
+                });
+            });
         }
 
         function moveMonth(offset) {
