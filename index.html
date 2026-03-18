@@ -140,7 +140,7 @@
                         </div>
                         <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 md:block hidden">
                             <p class="text-xs font-medium text-gray-500">선택 상태</p>
-                            <p id="selectedDaySummary" class="text-lg font-bold text-[#00a832] mt-1">0수업</p>
+                            <p id="selectedDaySummary" class="text-lg font-bold text-[#00a832] mt-1">0</p>
                         </div>
                     </div>
 
@@ -168,6 +168,13 @@
                             <div class="shrink-0 rounded-2xl bg-green-50 px-4 py-3 text-center min-w-[88px]">
                                 <p class="text-[11px] font-medium text-gray-500">총 수업 수</p>
                                 <p id="detailCount" class="text-2xl font-bold text-[#00a832] leading-none mt-1">0</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
+                            <p id="bulkHint" class="text-xs text-gray-400"></p>
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <button type="button" id="bulkCancelBtn" class="hidden rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100">일괄 취소</button>
+                                <button type="button" id="bulkRestoreBtn" class="hidden rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200">일괄 복구</button>
                             </div>
                         </div>
                     </div>
@@ -206,6 +213,9 @@
         const monthLessonCount = document.getElementById('monthLessonCount');
         const monthActiveDays = document.getElementById('monthActiveDays');
         const selectedDaySummary = document.getElementById('selectedDaySummary');
+        const bulkCancelBtn = document.getElementById('bulkCancelBtn');
+        const bulkRestoreBtn = document.getElementById('bulkRestoreBtn');
+        const bulkHint = document.getElementById('bulkHint');
 
         const now = new Date();
         const todayStr = formatDate(now);
@@ -375,8 +385,12 @@
             const activeDayCount = Object.values(lessonsByDate).filter((items) => getScheduledLessons(items).length > 0).length;
             monthLessonCount.textContent = totalLessonCount + '건';
             monthActiveDays.textContent = activeDayCount + '일';
-            const selectedCount = getScheduledLessons(lessonsByDate[selectedDate] || []).length;
-            selectedDaySummary.textContent = selectedCount + '수업';
+            const selectedItems = lessonsByDate[selectedDate] || [];
+            const selectedScheduled = getScheduledLessons(selectedItems).length;
+            const selectedCancelled = getCancelledLessons(selectedItems).length;
+            selectedDaySummary.textContent = selectedCancelled > 0
+                ? (selectedScheduled + ' / ' + selectedCancelled)
+                : String(selectedScheduled);
         }
 
         function renderCalendar() {
@@ -395,6 +409,7 @@
                 const dateStr = viewYear + '-' + String(viewMonth).padStart(2, '0') + '-' + String(dayNumber).padStart(2, '0');
                 const lessons = lessonsByDate[dateStr] || [];
                 const scheduledLessons = getScheduledLessons(lessons);
+                const cancelledLessons = getCancelledLessons(lessons);
                 const holidayName = holidaysByDate[dateStr] || '';
                 const sunday = isSunday(dateStr);
                 const saturday = isSaturday(dateStr);
@@ -409,9 +424,16 @@
                 const extraLine = hiddenCount > 0
                     ? '<div class="text-[11px] leading-4 text-[#00a832] font-semibold pl-1">+' + hiddenCount + '명 더 있음</div>'
                     : '';
-                const countBadge = scheduledLessons.length > 0
-                    ? '<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-[11px] font-semibold text-[#00a832]">' + scheduledLessons.length + '수업</span>'
-                    : '<span class="text-[11px] text-gray-300">비어 있음</span>';
+                let countBadge = '';
+                if (scheduledLessons.length === 0 && cancelledLessons.length === 0) {
+                    countBadge = '<span class="text-[11px] text-gray-300">비어 있음</span>';
+                } else {
+                    const scheduledBadge = '<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-[11px] font-semibold text-[#00a832]">' + scheduledLessons.length + '</span>';
+                    const cancelledBadge = cancelledLessons.length > 0
+                        ? '<span class="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-600">' + cancelledLessons.length + '</span>'
+                        : '';
+                    countBadge = '<span class="inline-flex items-center gap-1.5">' + scheduledBadge + cancelledBadge + '</span>';
+                }
 
                 let cls = 'calendar-day border border-gray-200 rounded-2xl p-3 flex flex-col overflow-hidden text-left';
                 if (selectedDate === dateStr) cls += ' selected';
@@ -464,6 +486,23 @@
                 });
         }
 
+        function updateActualLessonStatusByDate(dateStr, status) {
+            return fetch('/api/actual-lessons?date=' + encodeURIComponent(dateStr), {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: status })
+            })
+                .then((r) => r.json())
+                .then((data) => {
+                    if (!data.ok) throw new Error(data.error || '상태 변경 실패');
+                    const items = lessonsByDate[dateStr] || [];
+                    items.forEach((item) => { item.status = status; });
+                    renderMonthSummary();
+                    renderCalendar();
+                    renderDetail();
+                });
+        }
+
         function renderDetail() {
             const items = lessonsByDate[selectedDate] || [];
             const scheduledItems = getScheduledLessons(items);
@@ -480,17 +519,33 @@
                     : '선택한 날짜에 예정된 수업이 없습니다.';
             }
             detailCount.textContent = String(scheduledItems.length);
-            selectedDaySummary.textContent = scheduledItems.length + '수업';
+            selectedDaySummary.textContent = cancelledItems.length > 0
+                ? (scheduledItems.length + ' / ' + cancelledItems.length)
+                : String(scheduledItems.length);
 
             if (!selectedDate) {
                 detailBody.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">날짜를 선택해 주세요.</div>';
+                bulkCancelBtn.classList.add('hidden');
+                bulkRestoreBtn.classList.add('hidden');
+                bulkHint.textContent = '';
                 return;
             }
 
             if (!items.length) {
                 detailBody.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">이 날짜에는 등록된 실제 수업이 없습니다.</div>';
+                bulkCancelBtn.classList.add('hidden');
+                bulkRestoreBtn.classList.add('hidden');
+                bulkHint.textContent = '';
                 return;
             }
+
+            bulkCancelBtn.classList.toggle('hidden', scheduledItems.length === 0);
+            bulkRestoreBtn.classList.toggle('hidden', cancelledItems.length === 0);
+            const scheduledCount = scheduledItems.length;
+            const cancelledCount = cancelledItems.length;
+            bulkHint.textContent = (scheduledCount === 0 && cancelledCount === 0)
+                ? ''
+                : (cancelledCount > 0 ? `${scheduledCount}/${cancelledCount}` : String(scheduledCount));
 
             let html = '';
 
@@ -556,6 +611,20 @@
                 });
             });
         }
+
+        bulkCancelBtn.addEventListener('click', () => {
+            if (!selectedDate) return;
+            if (!confirm('이 날짜의 예정 수업을 모두 취소할까요?')) return;
+            updateActualLessonStatusByDate(selectedDate, 'cancelled')
+                .catch((err) => alert(err.message || '일괄 취소 실패'));
+        });
+
+        bulkRestoreBtn.addEventListener('click', () => {
+            if (!selectedDate) return;
+            if (!confirm('이 날짜의 취소된 수업을 모두 복구할까요?')) return;
+            updateActualLessonStatusByDate(selectedDate, 'scheduled')
+                .catch((err) => alert(err.message || '일괄 복구 실패'));
+        });
 
         function moveMonth(offset) {
             const next = new Date(viewYear, viewMonth - 1 + offset, 1);
