@@ -21,6 +21,7 @@
         const homeHref = base === '' || base === '/' ? '/index.html' : '/index.html';
         const studentsCls = activeMenu === 'students' ? ' active-menu' : '';
         const lessonsCls = activeMenu === 'lessons' ? ' active-menu' : '';
+        const journalsCls = activeMenu === 'journals' ? ' active-menu' : '';
         return `
         <aside id="app-sidebar" class="w-64 min-w-[16rem] bg-[#4a5a69] text-white flex-shrink-0 flex flex-col min-h-screen">
             <div class="p-5 bg-[#3e4d61] flex items-center justify-between flex-shrink-0">
@@ -34,6 +35,9 @@
                 </a>
                 <a href="/lessons.html" class="sidebar-item${lessonsCls} block px-5 py-3 flex items-center gap-3 transition">
                     <span>📅</span> 수업 등록/수정
+                </a>
+                <a href="/journals.html" class="sidebar-item${journalsCls} block px-5 py-3 flex items-center gap-3 transition">
+                    <span>📝</span> 일지 조회
                 </a>
                 <div class="px-5 py-3 mt-4 text-xs text-gray-400 uppercase font-bold">커뮤니케이션</div>
                 <a href="#" class="sidebar-item block px-5 py-3 flex items-center gap-3 transition">

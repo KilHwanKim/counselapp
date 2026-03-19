@@ -57,7 +57,7 @@ export default async function handler(req, res) {
       const rows = await sql`
         SELECT al.id, al.lesson_id, al.lesson_date, al.created_at, al.status,
                l.day_of_week, l.start_time, l.end_time, l.student_id, l.color,
-               s.name AS student_name
+               s.name AS student_name, s.birth_date AS student_birth_date
         FROM actual_lessons al
         JOIN lessons l ON l.id = al.lesson_id
         LEFT JOIN students s ON s.id = l.student_id
@@ -75,6 +75,7 @@ export default async function handler(req, res) {
         color: r.color || '',
         student_id: r.student_id,
         student_name: r.student_name || '',
+        student_birth_date: toDateString(r.student_birth_date),
         created_at: r.created_at ? String(r.created_at) : '',
       }));
       return res.status(200).json({ ok: true, actual_lessons: list });

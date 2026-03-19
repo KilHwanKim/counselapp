@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>일지 조회 - 상담 관리자 센터</title>
+    <style>
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        body { font-family: 'Pretendard', sans-serif; background-color: #f5f6f7; }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen overflow-hidden">
+    <div id="sidebar-container"></div>
+
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm flex-shrink-0">
+            <div class="flex items-center gap-2">
+                <span id="sidebar-toggle"></span>
+                <span class="text-sm font-medium text-gray-600">일지 조회</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="/index.html" class="text-sm text-gray-500 hover:text-gray-700">오늘 수업</a>
+                <a href="/lessons.html" class="text-sm text-gray-500 hover:text-gray-700">수업 등록/수정</a>
+            </div>
+        </header>
+
+        <main class="flex-1 p-4 md:p-6 overflow-hidden min-h-0">
+            <div class="flex h-full min-h-0 flex-col gap-4">
+                <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:p-5">
+                    <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Journal Browser</p>
+                            <h2 class="mt-2 text-2xl font-bold text-gray-900">학생별 월간 일지 조회</h2>
+                            <p class="mt-2 text-sm text-gray-500">학생과 월을 선택하면 해당 기간의 실제 수업을 마스터-디테일 구조로 볼 수 있습니다.</p>
+                        </div>
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1fr)_180px_auto]">
+                            <label class="block">
+                                <span class="mb-1.5 block text-sm font-medium text-gray-700">학생 선택</span>
+                                <select id="studentFilter" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-[#00a832] focus:ring-2 focus:ring-green-100">
+                                    <option value="">전체 학생</option>
+                                </select>
+                            </label>
+                            <label class="block">
+                                <span class="mb-1.5 block text-sm font-medium text-gray-700">조회 월</span>
+                                <input type="month" id="monthFilter" class="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 outline-none focus:border-[#00a832] focus:ring-2 focus:ring-green-100">
+                            </label>
+                            <div class="flex items-end">
+                                <button type="button" id="resetFiltersBtn" class="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100">초기화</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="grid flex-1 min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(320px,0.95fr)_minmax(0,1.25fr)]">
+                    <div class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                        <div class="border-b border-gray-200 px-4 py-4 md:px-5">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="min-w-0">
+                                    <p class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Master List</p>
+                                    <h3 class="mt-2 text-lg font-bold text-gray-900">일지 대상 수업 목록</h3>
+                                    <p id="listSummary" class="mt-1 text-sm text-gray-500">조회 조건을 불러오는 중입니다.</p>
+                                </div>
+                                <div class="rounded-2xl bg-green-50 px-4 py-3 text-center min-w-[88px]">
+                                    <p class="text-[11px] font-medium text-gray-500">총 건수</p>
+                                    <p id="listCount" class="mt-1 text-2xl font-bold leading-none text-[#00a832]">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto bg-gray-50/70 p-4 md:p-5 min-h-0">
+                            <div id="listError" class="hidden mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"></div>
+                            <div id="journalList">
+                                <div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">일지 대상 수업을 불러오는 중입니다.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                        <div class="border-b border-gray-200 px-4 py-4 md:px-5">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="min-w-0">
+                                    <p class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Detail</p>
+                                    <h3 id="detailTitle" class="mt-2 text-xl font-bold text-gray-900">일지를 선택하세요</h3>
+                                    <p id="detailSubtitle" class="mt-1 text-sm text-gray-500">좌측 목록에서 수업을 선택하면 상세 내용이 표시됩니다.</p>
+                                </div>
+                                <div id="detailStatusBadge" class="hidden rounded-full px-3 py-1 text-xs font-semibold"></div>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-y-auto bg-gray-50/70 p-4 md:p-5 min-h-0">
+                            <div id="detailBody" class="space-y-4">
+                                <div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">선택된 수업이 없습니다.</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/sidebar.js"></script>
+    <script>
+        Sidebar.render(document.getElementById('sidebar-container'), {
+            activeMenu: 'journals',
+            togglePlaceholder: document.getElementById('sidebar-toggle')
+        });
+    </script>
+    <script>
+        const studentFilter = document.getElementById('studentFilter');
+        const monthFilter = document.getElementById('monthFilter');
+        const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+        const listSummary = document.getElementById('listSummary');
+        const listCount = document.getElementById('listCount');
+        const journalList = document.getElementById('journalList');
+        const listError = document.getElementById('listError');
+        const detailTitle = document.getElementById('detailTitle');
+        const detailSubtitle = document.getElementById('detailSubtitle');
+        const detailStatusBadge = document.getElementById('detailStatusBadge');
+        const detailBody = document.getElementById('detailBody');
+
+        const now = new Date();
+        const currentMonthValue = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        monthFilter.value = currentMonthValue;
+
+        let allStudents = [];
+        let monthLessons = [];
+        let filteredLessons = [];
+        let selectedLessonId = null;
+
+        const LESSON_COLOR_PALETTE = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#14B8A6', '#EC4899', '#6366F1', '#84CC16', '#F97316'];
+
+        function escapeHtml(value) {
+            if (value == null) return '';
+            const div = document.createElement('div');
+            div.textContent = String(value);
+            return div.innerHTML;
+        }
+
+        function formatDisplayDate(dateStr) {
+            const s = String(dateStr || '').slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '-';
+            const parts = s.split('-').map(Number);
+            const date = new Date(parts[0], parts[1] - 1, parts[2]);
+            const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+            return parts[0] + '년 ' + parts[1] + '월 ' + parts[2] + '일 (' + weekdays[date.getDay()] + ')';
+        }
+
+        function getLessonTimeText(lesson) {
+            return (lesson.start_time || '') && (lesson.end_time || '')
+                ? lesson.start_time + ' - ' + lesson.end_time
+                : (lesson.start_time || '-');
+        }
+
+        function hashString(value) {
+            const str = String(value || '');
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash |= 0;
+            }
+            return Math.abs(hash);
+        }
+
+        function normalizeHexColor(color) {
+            const value = String(color || '').trim().toUpperCase();
+            return /^#[0-9A-F]{6}$/.test(value) ? value : '';
+        }
+
+        function getLessonColor(lesson) {
+            const normalized = normalizeHexColor(lesson && lesson.color);
+            if (normalized) return normalized;
+            const seed = lesson && lesson.student_id ? String(lesson.student_id) : String((lesson && lesson.student_name) || '');
+            return LESSON_COLOR_PALETTE[hashString(seed) % LESSON_COLOR_PALETTE.length];
+        }
+
+        function colorWithAlpha(hex, alpha) {
+            const value = normalizeHexColor(hex);
+            if (!value) return 'rgba(248,250,252,1)';
+            const r = parseInt(value.slice(1, 3), 16);
+            const g = parseInt(value.slice(3, 5), 16);
+            const b = parseInt(value.slice(5, 7), 16);
+            return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+        }
+
+        function calculateMonthAge(birthDateStr, referenceDateStr) {
+            const birth = String(birthDateStr || '').slice(0, 10);
+            const reference = String(referenceDateStr || '').slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || !/^\d{4}-\d{2}-\d{2}$/.test(reference)) return null;
+            const birthParts = birth.split('-').map(Number);
+            const refParts = reference.split('-').map(Number);
+            let months = (refParts[0] - birthParts[0]) * 12 + (refParts[1] - birthParts[1]);
+            if (refParts[2] < birthParts[2]) months -= 1;
+            return months >= 0 ? months : null;
+        }
+
+        function formatLifeAge(birthDateStr, referenceDateStr) {
+            const months = calculateMonthAge(birthDateStr, referenceDateStr);
+            return months == null ? '-' : months + '개월';
+        }
+
+        function compareLessons(a, b) {
+            const dateCompare = String(a.lesson_date || '').localeCompare(String(b.lesson_date || ''));
+            if (dateCompare !== 0) return dateCompare;
+            return String(a.start_time || '').localeCompare(String(b.start_time || ''));
+        }
+
+        function getStatusMeta(status) {
+            const normalized = String(status || 'scheduled').toLowerCase();
+            if (normalized === 'cancelled') {
+                return {
+                    label: '결석/취소',
+                    className: 'bg-red-50 text-red-600'
+                };
+            }
+            return {
+                label: '예정 수업',
+                className: 'bg-green-50 text-[#00a832]'
+            };
+        }
+
+        function renderStudentOptions() {
+            const currentValue = studentFilter.value;
+            const options = ['<option value="">전체 학생</option>'].concat(
+                allStudents.map((student) =>
+                    '<option value="' + student.id + '">' + escapeHtml(student.name || '(이름 없음)') + '</option>'
+                )
+            );
+            studentFilter.innerHTML = options.join('');
+            studentFilter.value = allStudents.some((student) => String(student.id) === currentValue) ? currentValue : '';
+        }
+
+        function renderList() {
+            listCount.textContent = String(filteredLessons.length);
+            const selectedStudentText = studentFilter.options[studentFilter.selectedIndex]
+                ? studentFilter.options[studentFilter.selectedIndex].textContent
+                : '전체 학생';
+            listSummary.textContent = selectedStudentText + ' · ' + (monthFilter.value || '-') + ' · ' + filteredLessons.length + '건';
+
+            if (!filteredLessons.length) {
+                journalList.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">조건에 맞는 일지 대상 수업이 없습니다.</div>';
+                return;
+            }
+
+            const rowsHtml = filteredLessons.map((lesson) => {
+                const lessonColor = getLessonColor(lesson);
+                const statusMeta = getStatusMeta(lesson.status);
+                const selectedClass = lesson.id === selectedLessonId
+                    ? 'bg-green-50/80'
+                    : 'bg-white hover:bg-gray-50';
+                const rowBorderColor = lesson.id === selectedLessonId ? '#86EFAC' : lessonColor;
+                return ''
+                    + '<tr class="journal-list-row cursor-pointer border-b border-gray-100 last:border-b-0 transition ' + selectedClass + '" data-id="' + lesson.id + '">'
+                    + '  <td class="px-4 py-3 text-sm font-semibold text-gray-900" style="border-left:4px solid ' + rowBorderColor + ';">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</td>'
+                    + '  <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">' + escapeHtml(formatDisplayDate(lesson.lesson_date)) + '</td>'
+                    + '  <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">' + escapeHtml(getLessonTimeText(lesson)) + '</td>'
+                    + '  <td class="px-4 py-3 text-sm"><span class="rounded-full px-3 py-1 text-xs font-semibold ' + statusMeta.className + '">' + statusMeta.label + '</span></td>'
+                    + '  <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">' + escapeHtml(formatLifeAge(lesson.student_birth_date, lesson.lesson_date)) + '</td>'
+                    + '</tr>';
+            }).join('');
+
+            journalList.innerHTML = ''
+                + '<div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">'
+                + '  <div class="overflow-x-auto">'
+                + '      <table class="min-w-full">'
+                + '          <thead class="bg-gray-50">'
+                + '              <tr>'
+                + '                  <th class="w-[30%] min-w-[140px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">학생명</th>'
+                + '                  <th class="w-[26%] min-w-[140px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">날짜</th>'
+                + '                  <th class="w-[18%] min-w-[110px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">시간</th>'
+                + '                  <th class="w-[14%] min-w-[110px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">상태</th>'
+                + '                  <th class="w-[12%] min-w-[110px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">생활연령</th>'
+                + '              </tr>'
+                + '          </thead>'
+                + '          <tbody>'
+                +                rowsHtml
+                + '          </tbody>'
+                + '      </table>'
+                + '  </div>'
+                + '</div>';
+
+            journalList.querySelectorAll('.journal-list-row').forEach((row) => {
+                row.addEventListener('click', () => {
+                    selectedLessonId = parseInt(row.getAttribute('data-id'), 10);
+                    renderList();
+                    renderDetail();
+                });
+            });
+        }
+
+        function renderDetail() {
+            const lesson = filteredLessons.find((item) => item.id === selectedLessonId);
+            if (!lesson) {
+                detailTitle.textContent = '일지를 선택하세요';
+                detailSubtitle.textContent = '좌측 목록에서 수업을 선택하면 상세 내용이 표시됩니다.';
+                detailStatusBadge.className = 'hidden rounded-full px-3 py-1 text-xs font-semibold';
+                detailBody.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">선택된 수업이 없습니다.</div>';
+                return;
+            }
+
+            const statusMeta = getStatusMeta(lesson.status);
+            detailTitle.textContent = (lesson.student_name || '(이름 없음)') + ' 일지';
+            detailSubtitle.textContent = formatDisplayDate(lesson.lesson_date) + ' · ' + getLessonTimeText(lesson);
+            detailStatusBadge.className = 'rounded-full px-3 py-1 text-xs font-semibold ' + statusMeta.className;
+            detailStatusBadge.textContent = statusMeta.label;
+
+            detailBody.innerHTML = ''
+                + '<div class="grid grid-cols-1 gap-4 md:grid-cols-2">'
+                + '  <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
+                + '      <p class="text-xs font-semibold tracking-[0.14em] text-gray-400 uppercase">학생 정보</p>'
+                + '      <div class="mt-3 space-y-3 text-sm text-gray-700">'
+                + '          <div><span class="font-semibold text-gray-900">학생명</span><p class="mt-1 text-gray-600">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</p></div>'
+                + '          <div><span class="font-semibold text-gray-900">생활연령</span><p class="mt-1 text-gray-600">' + escapeHtml(formatLifeAge(lesson.student_birth_date, lesson.lesson_date)) + '</p></div>'
+                + '          <div><span class="font-semibold text-gray-900">수업 상태</span><p class="mt-1 text-gray-600">' + escapeHtml(statusMeta.label) + '</p></div>'
+                + '      </div>'
+                + '  </div>'
+                + '  <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
+                + '      <p class="text-xs font-semibold tracking-[0.14em] text-gray-400 uppercase">수업 정보</p>'
+                + '      <div class="mt-3 space-y-3 text-sm text-gray-700">'
+                + '          <div><span class="font-semibold text-gray-900">날짜</span><p class="mt-1 text-gray-600">' + escapeHtml(formatDisplayDate(lesson.lesson_date)) + '</p></div>'
+                + '          <div><span class="font-semibold text-gray-900">시간</span><p class="mt-1 text-gray-600">' + escapeHtml(getLessonTimeText(lesson)) + '</p></div>'
+                + '          <div><span class="font-semibold text-gray-900">수업 색상</span><p class="mt-1 text-gray-600">' + escapeHtml(getLessonColor(lesson)) + '</p></div>'
+                + '      </div>'
+                + '  </div>'
+                + '</div>'
+                + '<div class="rounded-2xl border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">현재는 저장된 일지 데이터가 없어서 실제 수업 정보를 기반으로 조회 화면만 준비되어 있습니다.</div>'
+                + '<div class="grid grid-cols-1 gap-4">'
+                + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
+                + '      <p class="text-sm font-semibold text-gray-900">수업내용</p>'
+                + '      <div class="mt-2 rounded-xl bg-gray-50 px-4 py-4 text-sm leading-6 text-gray-500">아직 저장된 수업내용이 없습니다. 실제 일지 저장 기능이 연결되면 가장 중요한 필드로 이 영역에 표시됩니다.</div>'
+                + '  </section>'
+                + '  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">'
+                + '      <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><p class="text-sm font-semibold text-gray-900">금액</p><div class="mt-2 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500">미입력</div></section>'
+                + '      <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><p class="text-sm font-semibold text-gray-900">승인번호</p><div class="mt-2 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500">미입력</div></section>'
+                + '  </div>'
+                + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><p class="text-sm font-semibold text-gray-900">부모상담</p><div class="mt-2 rounded-xl bg-gray-50 px-4 py-4 text-sm leading-6 text-gray-500">저장된 부모상담 내용이 없습니다.</div></section>'
+                + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><p class="text-sm font-semibold text-gray-900">숙제</p><div class="mt-2 rounded-xl bg-gray-50 px-4 py-4 text-sm leading-6 text-gray-500">저장된 숙제 내용이 없습니다.</div></section>'
+                + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><p class="text-sm font-semibold text-gray-900">첨부파일</p><div class="mt-2 rounded-xl bg-gray-50 px-4 py-4 text-sm leading-6 text-gray-500">첨부된 파일이 없습니다.</div></section>'
+                + '</div>';
+        }
+
+        function applyFilters() {
+            const studentId = studentFilter.value ? parseInt(studentFilter.value, 10) : null;
+            filteredLessons = monthLessons
+                .filter((lesson) => !studentId || lesson.student_id === studentId)
+                .sort(compareLessons);
+
+            if (!filteredLessons.some((lesson) => lesson.id === selectedLessonId)) {
+                selectedLessonId = filteredLessons.length ? filteredLessons[0].id : null;
+            }
+
+            renderList();
+            renderDetail();
+        }
+
+        function loadMonthLessons() {
+            const monthValue = monthFilter.value || currentMonthValue;
+            const parts = monthValue.split('-');
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10);
+
+            listError.classList.add('hidden');
+            journalList.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">월간 수업 데이터를 불러오는 중입니다.</div>';
+
+            return fetch('/api/actual-lessons?year=' + year + '&month=' + month)
+                .then((r) => r.json())
+                .then((data) => {
+                    if (!data.ok) throw new Error(data.error || '수업 목록을 불러오지 못했습니다.');
+                    monthLessons = data.actual_lessons || [];
+                    applyFilters();
+                })
+                .catch((err) => {
+                    monthLessons = [];
+                    filteredLessons = [];
+                    selectedLessonId = null;
+                    listSummary.textContent = '조회 실패';
+                    listCount.textContent = '0';
+                    listError.textContent = err.message || '수업 목록을 불러오지 못했습니다.';
+                    listError.classList.remove('hidden');
+                    renderList();
+                    renderDetail();
+                });
+        }
+
+        function loadStudents() {
+            return fetch('/api/students')
+                .then((r) => r.json())
+                .then((data) => {
+                    if (!data.ok) throw new Error(data.error || '학생 목록을 불러오지 못했습니다.');
+                    allStudents = data.students || [];
+                    renderStudentOptions();
+                })
+                .catch((err) => {
+                    allStudents = [];
+                    renderStudentOptions();
+                    listError.textContent = err.message || '학생 목록을 불러오지 못했습니다.';
+                    listError.classList.remove('hidden');
+                });
+        }
+
+        resetFiltersBtn.addEventListener('click', () => {
+            studentFilter.value = '';
+            monthFilter.value = currentMonthValue;
+            loadMonthLessons();
+        });
+
+        studentFilter.addEventListener('change', applyFilters);
+        monthFilter.addEventListener('change', loadMonthLessons);
+
+        Promise.all([loadStudents(), loadMonthLessons()]).then(() => {
+            applyFilters();
+        });
+    </script>
+</body>
+</html>

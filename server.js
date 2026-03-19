@@ -44,5 +44,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`  Main:     http://localhost:${PORT}/`);
   console.log(`  Students: http://localhost:${PORT}/students.html`);
   console.log(`  Lessons:  http://localhost:${PORT}/lessons.html`);
+  console.log(`  Journals: http://localhost:${PORT}/journals.html`);
   console.log(`  DB Test:  http://localhost:${PORT}/tests/db-connection.html`);
 });

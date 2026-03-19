@@ -192,6 +192,90 @@
         </main>
     </div>
 
+    <div id="journalModal" class="fixed inset-0 z-50 hidden">
+        <div id="journalModalBackdrop" class="absolute inset-0 bg-gray-900/45 backdrop-blur-sm"></div>
+        <div class="relative flex h-full items-center justify-center p-4 md:p-6">
+            <div class="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl">
+                <div class="border-b border-gray-200 px-5 py-4 md:px-6 md:py-5">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Lesson Journal</p>
+                            <h3 id="journalModalTitle" class="mt-2 text-xl font-bold text-gray-900">일지 작성</h3>
+                            <p id="journalModalSubtitle" class="mt-1 text-sm text-gray-500">수업별 일지를 입력할 수 있습니다.</p>
+                        </div>
+                        <button type="button" id="journalModalCloseBtn" class="rounded-full border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">닫기</button>
+                    </div>
+                </div>
+
+                <div class="max-h-[calc(100vh-10rem)] overflow-y-auto bg-gray-50/70 px-5 py-5 md:px-6">
+                    <form id="journalForm" class="space-y-5">
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <label class="block">
+                                <span class="mb-1.5 block text-sm font-semibold text-gray-700">날짜</span>
+                                <input type="text" id="journalDate" readonly class="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none">
+                            </label>
+                            <label class="block">
+                                <span class="mb-1.5 block text-sm font-semibold text-gray-700">생활연령</span>
+                                <input type="text" id="journalAge" readonly class="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none">
+                            </label>
+                        </div>
+
+                        <label class="block">
+                            <span class="mb-1.5 block text-sm font-semibold text-gray-700">수업내용</span>
+                            <textarea id="journalLessonContent" rows="6" placeholder="수업내용을 입력해 주세요." class="w-full rounded-2xl border border-green-200 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"></textarea>
+                        </label>
+
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <label class="block">
+                                <span class="mb-1.5 block text-sm font-semibold text-gray-700">금액</span>
+                                <select id="journalAmountType" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"></select>
+                            </label>
+                            <label class="block">
+                                <span class="mb-1.5 block text-sm font-semibold text-gray-700">시간</span>
+                                <input type="text" id="journalTime" placeholder="예: 14:00 - 14:40" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100">
+                            </label>
+                        </div>
+
+                        <label class="block">
+                            <span class="mb-1.5 block text-sm font-semibold text-gray-700">승인번호</span>
+                            <input type="text" id="journalApprovalNumber" placeholder="승인번호를 입력해 주세요." class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100">
+                        </label>
+
+                        <label class="block">
+                            <span class="mb-1.5 block text-sm font-semibold text-gray-700">부모상담</span>
+                            <textarea id="journalParentConsultation" rows="4" placeholder="부모상담 내용을 입력해 주세요." class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"></textarea>
+                        </label>
+
+                        <label class="block">
+                            <span class="mb-1.5 block text-sm font-semibold text-gray-700">숙제</span>
+                            <textarea id="journalHomework" rows="3" placeholder="숙제를 입력해 주세요." class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"></textarea>
+                        </label>
+
+                        <div>
+                            <span class="mb-1.5 block text-sm font-semibold text-gray-700">첨부파일</span>
+                            <div class="flex flex-col gap-3 rounded-2xl border border-dashed border-gray-300 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-gray-700">첨부파일 UI</p>
+                                    <p id="journalAttachmentName" class="mt-1 truncate text-sm text-gray-500">선택된 파일 없음</p>
+                                </div>
+                                <label class="inline-flex cursor-pointer items-center justify-center rounded-full border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100">
+                                    파일 선택
+                                    <input type="file" id="journalAttachment" class="hidden">
+                                </label>
+                            </div>
+                            <p class="mt-2 text-xs text-gray-400">현재는 첨부파일 UI만 제공되며 저장되지는 않습니다.</p>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="flex flex-col gap-3 border-t border-gray-200 bg-white px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
+                    <p class="text-xs text-gray-400">현재 일지 팝업은 UI만 구현되어 있으며 입력값은 저장되지 않습니다.</p>
+                    <button type="button" id="journalModalConfirmBtn" class="inline-flex items-center justify-center rounded-full bg-[#00a832] px-5 py-2 text-sm font-semibold text-white hover:bg-green-700">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/sidebar.js"></script>
     <script>
         Sidebar.render(document.getElementById('sidebar-container'), {
@@ -216,6 +300,23 @@
         const bulkCancelBtn = document.getElementById('bulkCancelBtn');
         const bulkRestoreBtn = document.getElementById('bulkRestoreBtn');
         const bulkHint = document.getElementById('bulkHint');
+        const journalModal = document.getElementById('journalModal');
+        const journalModalBackdrop = document.getElementById('journalModalBackdrop');
+        const journalModalTitle = document.getElementById('journalModalTitle');
+        const journalModalSubtitle = document.getElementById('journalModalSubtitle');
+        const journalModalCloseBtn = document.getElementById('journalModalCloseBtn');
+        const journalModalConfirmBtn = document.getElementById('journalModalConfirmBtn');
+        const journalForm = document.getElementById('journalForm');
+        const journalDate = document.getElementById('journalDate');
+        const journalAge = document.getElementById('journalAge');
+        const journalLessonContent = document.getElementById('journalLessonContent');
+        const journalAmountType = document.getElementById('journalAmountType');
+        const journalTime = document.getElementById('journalTime');
+        const journalApprovalNumber = document.getElementById('journalApprovalNumber');
+        const journalParentConsultation = document.getElementById('journalParentConsultation');
+        const journalHomework = document.getElementById('journalHomework');
+        const journalAttachment = document.getElementById('journalAttachment');
+        const journalAttachmentName = document.getElementById('journalAttachmentName');
 
         const now = new Date();
         const todayStr = formatDate(now);
@@ -225,7 +326,14 @@
         let selectedDate = todayStr;
         let lessonsByDate = {};
         let holidaysByDate = {};
+        let currentJournalLesson = null;
         const LESSON_COLOR_PALETTE = ['#22C55E', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444', '#14B8A6', '#EC4899', '#6366F1', '#84CC16', '#F97316'];
+        const JOURNAL_AMOUNT_OPTIONS = [
+            { value: 'basic', label: '기본 수업', amount: '30,000원' },
+            { value: 'makeup', label: '보강 수업', amount: '35,000원' },
+            { value: 'evaluation', label: '평가 수업', amount: '40,000원' },
+            { value: 'consulting', label: '부모상담 포함', amount: '50,000원' }
+        ];
 
         function formatDate(date) {
             return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
@@ -238,6 +346,68 @@
             const date = new Date(parts[0], parts[1] - 1, parts[2]);
             const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
             return parts[0] + '년 ' + parts[1] + '월 ' + parts[2] + '일 (' + weekdays[date.getDay()] + ')';
+        }
+
+        function getLessonTimeText(lesson) {
+            return (lesson.start_time || '') && (lesson.end_time || '')
+                ? lesson.start_time + ' - ' + lesson.end_time
+                : (lesson.start_time || '-');
+        }
+
+        function calculateMonthAge(birthDateStr, referenceDateStr) {
+            const birth = String(birthDateStr || '').slice(0, 10);
+            const reference = String(referenceDateStr || '').slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(birth) || !/^\d{4}-\d{2}-\d{2}$/.test(reference)) return null;
+            const birthParts = birth.split('-').map(Number);
+            const refParts = reference.split('-').map(Number);
+            let months = (refParts[0] - birthParts[0]) * 12 + (refParts[1] - birthParts[1]);
+            if (refParts[2] < birthParts[2]) months -= 1;
+            return months >= 0 ? months : null;
+        }
+
+        function formatLifeAge(birthDateStr, referenceDateStr) {
+            const months = calculateMonthAge(birthDateStr, referenceDateStr);
+            return months == null ? '-' : months + '개월';
+        }
+
+        function buildJournalAmountOptionsHtml() {
+            return JOURNAL_AMOUNT_OPTIONS.map((option) =>
+                '<option value="' + escapeHtml(option.value) + '">' + escapeHtml(option.label + ' · ' + option.amount) + '</option>'
+            ).join('');
+        }
+
+        function resetJournalForm() {
+            journalForm.reset();
+            journalDate.value = '';
+            journalAge.value = '';
+            journalAttachmentName.textContent = '선택된 파일 없음';
+            journalAmountType.innerHTML = buildJournalAmountOptionsHtml();
+            if (JOURNAL_AMOUNT_OPTIONS.length > 0) {
+                journalAmountType.value = JOURNAL_AMOUNT_OPTIONS[0].value;
+            }
+        }
+
+        function openJournalModal(lesson) {
+            currentJournalLesson = lesson || null;
+            resetJournalForm();
+
+            const studentName = lesson && lesson.student_name ? lesson.student_name : '학생';
+            const lessonDate = lesson && lesson.lesson_date ? lesson.lesson_date : selectedDate;
+            const timeText = getLessonTimeText(lesson || {});
+            const isCancelled = lesson && (lesson.status || 'scheduled') === 'cancelled';
+
+            journalModalTitle.textContent = studentName + ' 일지';
+            journalModalSubtitle.textContent = isCancelled ? '결석/취소 수업 일지 팝업입니다.' : '수업 일지 팝업입니다.';
+            journalDate.value = formatDisplayDate(lessonDate || '');
+            journalAge.value = formatLifeAge(lesson && lesson.student_birth_date, lessonDate || todayStr);
+            journalTime.value = timeText === '-' ? '' : timeText;
+            journalModal.classList.remove('hidden');
+        }
+
+        function closeJournalModal() {
+            currentJournalLesson = null;
+            journalModal.classList.add('hidden');
+            resetJournalForm();
         }
 
         function escapeHtml(value) {
@@ -552,9 +722,7 @@
             if (scheduledItems.length > 0) {
                 html += '<div class="mb-3 flex items-center justify-between"><p class="text-xs font-semibold tracking-[0.14em] text-gray-400 uppercase">Scheduled</p><span class="text-xs font-medium text-[#00a832]">' + scheduledItems.length + '건</span></div>';
                 html += scheduledItems.map((lesson) => {
-                    const timeText = (lesson.start_time || '') && (lesson.end_time || '')
-                        ? lesson.start_time + ' - ' + lesson.end_time
-                        : (lesson.start_time || '-');
+                    const timeText = getLessonTimeText(lesson);
                     const lessonColor = getLessonColor(lesson);
                     return ''
                         + '<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" style="border-left:4px solid ' + lessonColor + ';">'
@@ -563,8 +731,9 @@
                         + '          <p class="text-sm font-bold text-gray-900">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</p>'
                         + '          <p class="text-xs text-gray-500 mt-1">실제 수업 일정</p>'
                         + '      </div>'
-                        + '      <div class="flex items-center gap-2 shrink-0">'
+                        + '      <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">'
                         + '          <div class="rounded-full px-3 py-1 text-xs font-semibold" style="background-color:' + colorWithAlpha(lessonColor, 0.14) + ';color:' + darkenColor(lessonColor, 0.28) + ';">' + escapeHtml(timeText) + '</div>'
+                        + '          <button type="button" class="journal-lesson-btn rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-[#00a832] hover:bg-green-100" data-id="' + lesson.id + '">일지</button>'
                         + '          <button type="button" class="cancel-lesson-btn rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100" data-id="' + lesson.id + '">취소</button>'
                         + '      </div>'
                         + '  </div>'
@@ -575,9 +744,7 @@
             if (cancelledItems.length > 0) {
                 html += '<div class="' + (scheduledItems.length ? 'mt-5 ' : '') + 'mb-3 flex items-center justify-between"><p class="text-xs font-semibold tracking-[0.14em] text-gray-400 uppercase">Cancelled</p><span class="text-xs font-medium text-gray-500">' + cancelledItems.length + '건</span></div>';
                 html += cancelledItems.map((lesson) => {
-                    const timeText = (lesson.start_time || '') && (lesson.end_time || '')
-                        ? lesson.start_time + ' - ' + lesson.end_time
-                        : (lesson.start_time || '-');
+                    const timeText = getLessonTimeText(lesson);
                     const lessonColor = getLessonColor(lesson);
                     return ''
                         + '<div class="rounded-xl border border-gray-200 bg-white/90 px-4 py-3 shadow-sm opacity-80" style="border-left:4px solid ' + lessonColor + ';">'
@@ -586,8 +753,9 @@
                         + '          <p class="text-sm font-bold text-gray-700">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</p>'
                         + '          <p class="text-xs text-gray-500 mt-1">수업 취소</p>'
                         + '      </div>'
-                        + '      <div class="flex items-center gap-2 shrink-0">'
+                        + '      <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">'
                         + '          <div class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">' + escapeHtml(timeText) + '</div>'
+                        + '          <button type="button" class="journal-lesson-btn rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-[#00a832] hover:bg-green-100" data-id="' + lesson.id + '">일지</button>'
                         + '          <button type="button" class="restore-lesson-btn rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200" data-id="' + lesson.id + '">복구</button>'
                         + '      </div>'
                         + '  </div>'
@@ -596,6 +764,14 @@
             }
 
             detailBody.innerHTML = html || '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">이 날짜에는 표시할 수업이 없습니다.</div>';
+
+            detailBody.querySelectorAll('.journal-lesson-btn').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const lessonId = parseInt(button.getAttribute('data-id'), 10);
+                    const lesson = items.find((item) => item.id === lessonId);
+                    if (lesson) openJournalModal(lesson);
+                });
+            });
 
             detailBody.querySelectorAll('.cancel-lesson-btn').forEach((button) => {
                 button.addEventListener('click', () => {
@@ -611,6 +787,20 @@
                 });
             });
         }
+
+        journalModalBackdrop.addEventListener('click', closeJournalModal);
+        journalModalCloseBtn.addEventListener('click', closeJournalModal);
+        journalModalConfirmBtn.addEventListener('click', closeJournalModal);
+        journalAttachment.addEventListener('change', () => {
+            const file = journalAttachment.files && journalAttachment.files[0];
+            journalAttachmentName.textContent = file ? file.name : '선택된 파일 없음';
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !journalModal.classList.contains('hidden')) {
+                closeJournalModal();
+            }
+        });
+        resetJournalForm();
 
         bulkCancelBtn.addEventListener('click', () => {
             if (!selectedDate) return;
