@@ -204,7 +204,10 @@
 
         function formatLifeAge(birthDateStr, referenceDateStr) {
             const months = calculateMonthAge(birthDateStr, referenceDateStr);
-            return months == null ? '-' : months + '개월';
+            if (months == null) return '-';
+            const years = Math.floor(months / 12);
+            const monthsPart = months % 12;
+            return years + '년 ' + monthsPart + '개월';
         }
 
         function compareLessons(a, b) {
