@@ -36,6 +36,9 @@ app.get('/api/actual-lessons', actualLessonsHandler);
 app.post('/api/actual-lessons', actualLessonsHandler);
 app.patch('/api/actual-lessons', actualLessonsHandler);
 
+const cronSyncActualLessons = (await import('./api/cron/sync-actual-lessons.js')).default;
+app.get('/api/cron/sync-actual-lessons', cronSyncActualLessons);
+
 const lessonJournalsHandler = (await import('./api/lesson-journals.js')).default;
 app.get('/api/lesson-journals', lessonJournalsHandler);
 app.post('/api/lesson-journals', lessonJournalsHandler);

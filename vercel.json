@@ -1,6 +1,12 @@
 {
   "buildCommand": "",
   "outputDirectory": ".",
+  "crons": [
+    {
+      "path": "/api/cron/sync-actual-lessons",
+      "schedule": "0 0 1 * *"
+    }
+  ],
   "rewrites": [
   { "source": "/", "destination": "/index.html" },
   { "source": "/tests", "destination": "/tests/db-connection.html" },

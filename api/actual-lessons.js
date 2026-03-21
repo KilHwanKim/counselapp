@@ -30,6 +30,32 @@ function toJsDay(dayOfWeek) {
   return dayOfWeek === 7 ? 0 : dayOfWeek;
 }
 
+/** Generate actual_lessons rows for one calendar month from recurring lessons (templates). */
+export async function syncActualLessonsForMonth(sql, year, month) {
+  const lastDay = new Date(year, month, 0).getDate();
+
+  const lessons = await sql`
+    SELECT id, day_of_week FROM lessons
+  `;
+  let inserted = 0;
+  for (const lesson of lessons || []) {
+    const targetDow = toJsDay(lesson.day_of_week);
+    for (let d = 1; d <= lastDay; d++) {
+      const date = new Date(year, month - 1, d);
+      if (date.getDay() !== targetDow) continue;
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const result = await sql`
+        INSERT INTO actual_lessons (lesson_id, lesson_date)
+        VALUES (${lesson.id}, ${dateStr})
+        ON CONFLICT (lesson_id, lesson_date) DO NOTHING
+        RETURNING id
+      `;
+      if (result && result.length > 0) inserted += result.length;
+    }
+  }
+  return { inserted };
+}
+
 export default async function handler(req, res) {
   const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
   if (!connectionString) {
@@ -103,28 +129,7 @@ export default async function handler(req, res) {
       const now = new Date();
       const year = body.year != null && !Number.isNaN(Number(body.year)) ? Number(body.year) : now.getFullYear();
       const month = body.month != null && !Number.isNaN(Number(body.month)) ? Number(body.month) : now.getMonth() + 1;
-      const firstDay = new Date(year, month - 1, 1);
-      const lastDay = new Date(year, month, 0).getDate();
-
-      const lessons = await sql`
-        SELECT id, day_of_week FROM lessons
-      `;
-      let inserted = 0;
-      for (const lesson of lessons || []) {
-        const targetDow = toJsDay(lesson.day_of_week);
-        for (let d = 1; d <= lastDay; d++) {
-          const date = new Date(year, month - 1, d);
-          if (date.getDay() !== targetDow) continue;
-          const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-          const result = await sql`
-            INSERT INTO actual_lessons (lesson_id, lesson_date)
-            VALUES (${lesson.id}, ${dateStr})
-            ON CONFLICT (lesson_id, lesson_date) DO NOTHING
-            RETURNING id
-          `;
-          if (result && result.length > 0) inserted += result.length;
-        }
-      }
+      const { inserted } = await syncActualLessonsForMonth(sql, year, month);
       return res.status(200).json({ ok: true, inserted });
     }
 
