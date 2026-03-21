@@ -83,7 +83,10 @@
                                     <h3 id="detailTitle" class="mt-2 text-xl font-bold text-gray-900">일지를 선택하세요</h3>
                                     <p id="detailSubtitle" class="mt-1 text-sm text-gray-500">좌측 목록에서 수업을 선택하면 상세 내용이 표시됩니다.</p>
                                 </div>
-                                <div id="detailStatusBadge" class="hidden rounded-full px-3 py-1 text-xs font-semibold"></div>
+                                <div class="flex shrink-0 flex-col items-end gap-2 pt-0.5">
+                                    <button type="button" id="journalDetailSaveBtn" class="hidden inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold">저장</button>
+                                    <div id="detailStatusBadge" class="hidden rounded-full px-3 py-1 text-xs font-semibold"></div>
+                                </div>
                             </div>
                         </div>
                         <div class="flex-1 overflow-y-auto bg-gray-50/70 p-4 md:p-5 min-h-0">
@@ -115,6 +118,7 @@
         const detailTitle = document.getElementById('detailTitle');
         const detailSubtitle = document.getElementById('detailSubtitle');
         const detailStatusBadge = document.getElementById('detailStatusBadge');
+        const journalDetailSaveBtn = document.getElementById('journalDetailSaveBtn');
         const detailBody = document.getElementById('detailBody');
 
         const now = new Date();
@@ -217,6 +221,27 @@
             };
         }
 
+        const JOURNAL_AMOUNT_OPTIONS = [
+            { value: 'basic', label: '기본 수업', amount: '30,000원' },
+            { value: 'makeup', label: '보강 수업', amount: '35,000원' },
+            { value: 'evaluation', label: '평가 수업', amount: '40,000원' },
+            { value: 'consulting', label: '부모상담 포함', amount: '50,000원' }
+        ];
+
+        function getJournalStatusMeta(journalExists) {
+            const hasWritten = !!journalExists;
+            if (hasWritten) {
+                return {
+                    label: '일지 수정',
+                    className: 'bg-green-50 text-[#00a832]'
+                };
+            }
+            return {
+                label: '일지',
+                className: 'bg-amber-50 text-amber-800 border border-amber-200'
+            };
+        }
+
         function renderStudentOptions() {
             const currentValue = studentFilter.value;
             const options = ['<option value="">전체 학생</option>'].concat(
@@ -252,7 +277,12 @@
                     + '  <td class="px-4 py-3 text-sm font-semibold text-gray-900" style="border-left:4px solid ' + rowBorderColor + ';">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</td>'
                     + '  <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">' + escapeHtml(formatDisplayDate(lesson.lesson_date)) + '</td>'
                     + '  <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">' + escapeHtml(getLessonTimeText(lesson)) + '</td>'
-                    + '  <td class="px-4 py-3 text-sm"><span class="rounded-full px-3 py-1 text-xs font-semibold ' + statusMeta.className + '">' + statusMeta.label + '</span></td>'
+                    + '  <td class="px-4 py-3 text-sm">'
+                    + '    <div class="flex items-center gap-2 flex-wrap">'
+                    + '      <span class="rounded-full px-3 py-1 text-xs font-semibold ' + statusMeta.className + '">' + statusMeta.label + '</span>'
+                    + '      <span class="rounded-full px-3 py-1 text-xs font-semibold ' + getJournalStatusMeta(lesson.journal_exists).className + '">' + getJournalStatusMeta(lesson.journal_exists).label + '</span>'
+                    + '    </div>'
+                    + '  </td>'
                     + '  <td class="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">' + escapeHtml(formatLifeAge(lesson.student_birth_date, lesson.lesson_date)) + '</td>'
                     + '</tr>';
             }).join('');
@@ -292,15 +322,19 @@
                 detailTitle.textContent = '일지를 선택하세요';
                 detailSubtitle.textContent = '좌측 목록에서 수업을 선택하면 상세 내용이 표시됩니다.';
                 detailStatusBadge.className = 'hidden rounded-full px-3 py-1 text-xs font-semibold';
+                journalDetailSaveBtn.classList.add('hidden');
+                journalDetailSaveBtn.onclick = null;
                 detailBody.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">선택된 수업이 없습니다.</div>';
                 return;
             }
 
             const statusMeta = getStatusMeta(lesson.status);
+            const journalMeta = getJournalStatusMeta(lesson.journal_exists);
+            const journal = lesson.journal || {};
             detailTitle.textContent = (lesson.student_name || '(이름 없음)') + ' 일지';
             detailSubtitle.textContent = formatDisplayDate(lesson.lesson_date) + ' · ' + getLessonTimeText(lesson);
-            detailStatusBadge.className = 'rounded-full px-3 py-1 text-xs font-semibold ' + statusMeta.className;
-            detailStatusBadge.textContent = statusMeta.label;
+            detailStatusBadge.className = 'rounded-full px-3 py-1 text-xs font-semibold ' + journalMeta.className;
+            detailStatusBadge.textContent = journalMeta.label;
 
             detailBody.innerHTML = ''
                 + '<div class="grid grid-cols-1 gap-4 md:grid-cols-2">'
@@ -321,20 +355,109 @@
                 + '      </div>'
                 + '  </div>'
                 + '</div>'
-                + '<div class="rounded-2xl border border-dashed border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">현재는 저장된 일지 데이터가 없어서 실제 수업 정보를 기반으로 조회 화면만 준비되어 있습니다.</div>'
-                + '<div class="grid grid-cols-1 gap-4">'
+                + '<div class="mt-2 text-xs text-gray-400">첨부파일은 현재 DB에 저장되지 않습니다(텍스트 저장만 지원).</div>'
+                + '<div class="grid grid-cols-1 gap-4 mt-2">'
                 + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
-                + '      <p class="text-sm font-semibold text-gray-900">수업내용</p>'
-                + '      <div class="mt-2 rounded-xl bg-gray-50 px-4 py-4 text-sm leading-6 text-gray-500">아직 저장된 수업내용이 없습니다. 실제 일지 저장 기능이 연결되면 가장 중요한 필드로 이 영역에 표시됩니다.</div>'
+                + '      <p class="text-sm font-semibold text-gray-900 mb-2">수업내용</p>'
+                + '      <textarea id="journalDetailLessonContent" rows="6" placeholder="수업내용을 입력해 주세요." class="w-full rounded-2xl border border-green-200 bg-white px-4 py-3 text-sm text-gray-800 shadow-sm outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"></textarea>'
                 + '  </section>'
                 + '  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">'
-                + '      <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><p class="text-sm font-semibold text-gray-900">금액</p><div class="mt-2 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500">미입력</div></section>'
-                + '      <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><p class="text-sm font-semibold text-gray-900">승인번호</p><div class="mt-2 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-500">미입력</div></section>'
+                + '      <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
+                + '          <p class="text-sm font-semibold text-gray-900 mb-2">금액</p>'
+                + '          <select id="journalDetailAmountType" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"></select>'
+                + '      </section>'
+                + '      <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
+                + '          <p class="text-sm font-semibold text-gray-900 mb-2">시간</p>'
+                + '          <input id="journalDetailLessonTime" type="text" placeholder="예: 14:00 - 14:40" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100">'
+                + '      </section>'
                 + '  </div>'
-                + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><p class="text-sm font-semibold text-gray-900">부모상담</p><div class="mt-2 rounded-xl bg-gray-50 px-4 py-4 text-sm leading-6 text-gray-500">저장된 부모상담 내용이 없습니다.</div></section>'
-                + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><p class="text-sm font-semibold text-gray-900">숙제</p><div class="mt-2 rounded-xl bg-gray-50 px-4 py-4 text-sm leading-6 text-gray-500">저장된 숙제 내용이 없습니다.</div></section>'
-                + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"><p class="text-sm font-semibold text-gray-900">첨부파일</p><div class="mt-2 rounded-xl bg-gray-50 px-4 py-4 text-sm leading-6 text-gray-500">첨부된 파일이 없습니다.</div></section>'
+                + '  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">'
+                + '      <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
+                + '          <p class="text-sm font-semibold text-gray-900 mb-2">승인번호</p>'
+                + '          <input id="journalDetailApprovalNumber" type="text" placeholder="승인번호를 입력해 주세요." class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100">'
+                + '      </section>'
+                + '      <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
+                + '          <p class="text-sm font-semibold text-gray-900 mb-2">부모상담</p>'
+                + '          <textarea id="journalDetailParentConsultation" rows="3" placeholder="부모상담 내용을 입력해 주세요." class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"></textarea>'
+                + '      </section>'
+                + '  </div>'
+                + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
+                + '      <p class="text-sm font-semibold text-gray-900 mb-2">숙제</p>'
+                + '      <textarea id="journalDetailHomework" rows="3" placeholder="숙제를 입력해 주세요." class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"></textarea>'
+                + '  </section>'
+                + '  <section class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-4">'
+                + '      <p class="text-sm font-semibold text-gray-900">첨부파일</p>'
+                + '      <p class="mt-1 text-xs text-gray-500">현재는 파일 UI만 제공되며 저장되지 않습니다.</p>'
+                + '  </section>'
                 + '</div>';
+
+            // 입력값 채우기
+            const contentEl = document.getElementById('journalDetailLessonContent');
+            const amountEl = document.getElementById('journalDetailAmountType');
+            const timeEl = document.getElementById('journalDetailLessonTime');
+            const approvalEl = document.getElementById('journalDetailApprovalNumber');
+            const parentEl = document.getElementById('journalDetailParentConsultation');
+            const homeworkEl = document.getElementById('journalDetailHomework');
+
+            if (amountEl) {
+                const options = JOURNAL_AMOUNT_OPTIONS.map((o) => {
+                    const selected = o.value === (journal.amount_type || '') ? ' selected' : '';
+                    return '<option value="' + escapeHtml(o.value) + '"' + selected + '>' + escapeHtml(o.label + ' · ' + o.amount) + '</option>';
+                }).join('');
+                amountEl.innerHTML = options;
+                if (!journal.amount_type && JOURNAL_AMOUNT_OPTIONS[0] && JOURNAL_AMOUNT_OPTIONS[0].value) {
+                    amountEl.value = JOURNAL_AMOUNT_OPTIONS[0].value;
+                }
+            }
+
+            if (contentEl) contentEl.value = journal.lesson_content || '';
+            if (timeEl) timeEl.value = journal.lesson_time || '';
+            if (approvalEl) approvalEl.value = journal.approval_number || '';
+            if (parentEl) parentEl.value = journal.parent_consultation || '';
+            if (homeworkEl) homeworkEl.value = journal.homework || '';
+
+            journalDetailSaveBtn.classList.remove('hidden');
+            journalDetailSaveBtn.textContent = journalMeta.label;
+            journalDetailSaveBtn.className =
+                'inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-semibold '
+                + (lesson.journal_exists ? 'bg-[#00a832] text-white hover:bg-green-700' : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100');
+
+            journalDetailSaveBtn.onclick = async () => {
+                const payload = {
+                    actual_lesson_id: lesson.id,
+                    lesson_content: contentEl ? contentEl.value || '' : '',
+                    amount_type: amountEl ? amountEl.value || '' : '',
+                    lesson_time: timeEl ? timeEl.value || '' : '',
+                    approval_number: approvalEl ? approvalEl.value || '' : '',
+                    parent_consultation: parentEl ? parentEl.value || '' : '',
+                    homework: homeworkEl ? homeworkEl.value || '' : ''
+                };
+
+                const hasWritten =
+                    [payload.lesson_content, payload.approval_number, payload.parent_consultation, payload.homework]
+                        .some((v) => String(v || '').trim().length > 0);
+
+                try {
+                    if (!hasWritten) {
+                        const delRes = await fetch('/api/lesson-journals?actual_lesson_id=' + encodeURIComponent(String(lesson.id)), { method: 'DELETE' });
+                        const delData = await delRes.json().catch(() => ({}));
+                        if (!delRes.ok || !delData.ok) throw new Error(delData.error || '일지 삭제 실패');
+                    } else {
+                        const res = await fetch('/api/lesson-journals', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok || !data.ok) throw new Error(data.error || '일지 저장 실패');
+                    }
+
+                    selectedLessonId = lesson.id;
+                    await loadMonthLessons();
+                } catch (err) {
+                    alert(err.message || '일지 저장/수정 실패');
+                }
+            };
         }
 
         function applyFilters() {

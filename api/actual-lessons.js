@@ -57,10 +57,14 @@ export default async function handler(req, res) {
       const rows = await sql`
         SELECT al.id, al.lesson_id, al.lesson_date, al.created_at, al.status,
                l.day_of_week, l.start_time, l.end_time, l.student_id, l.color,
-               s.name AS student_name, s.birth_date AS student_birth_date
+               s.name AS student_name, s.birth_date AS student_birth_date,
+
+               lj.id AS journal_id, lj.lesson_content, lj.amount_type, lj.lesson_time,
+               lj.approval_number, lj.parent_consultation, lj.homework, lj.updated_at AS journal_updated_at
         FROM actual_lessons al
         JOIN lessons l ON l.id = al.lesson_id
         LEFT JOIN students s ON s.id = l.student_id
+        LEFT JOIN lesson_journals lj ON lj.actual_lesson_id = al.id
         WHERE al.lesson_date >= ${fromDate} AND al.lesson_date <= ${toDate}
         ORDER BY al.lesson_date, l.start_time
       `;
@@ -77,6 +81,19 @@ export default async function handler(req, res) {
         student_name: r.student_name || '',
         student_birth_date: toDateString(r.student_birth_date),
         created_at: r.created_at ? String(r.created_at) : '',
+
+        journal_exists: !!r.journal_id,
+        journal: r.journal_id
+          ? {
+              lesson_content: r.lesson_content || '',
+              amount_type: r.amount_type || '',
+              lesson_time: r.lesson_time || '',
+              approval_number: r.approval_number || '',
+              parent_consultation: r.parent_consultation || '',
+              homework: r.homework || '',
+              updated_at: r.journal_updated_at ? String(r.journal_updated_at) : '',
+            }
+          : null,
       }));
       return res.status(200).json({ ok: true, actual_lessons: list });
     }

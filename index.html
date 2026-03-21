@@ -263,7 +263,7 @@
                                     <input type="file" id="journalAttachment" class="hidden">
                                 </label>
                             </div>
-                            <p class="mt-2 text-xs text-gray-400">현재는 첨부파일 UI만 제공되며 저장되지는 않습니다.</p>
+                            <p class="mt-2 text-xs text-gray-400">첨부파일은 UI만 제공되며, 현재 저장은 텍스트 필드만 지원합니다.</p>
                         </div>
                     </form>
                 </div>
@@ -335,6 +335,59 @@
             { value: 'consulting', label: '부모상담 포함', amount: '50,000원' }
         ];
 
+        // lesson.id 별로 "일지 작성 여부/내용"을 저장해, 상세 패널에서 색상/라벨을 즉시 반영합니다.
+        // (현재 백엔드 일지 API가 없어서 localStorage 기반으로 동작합니다.)
+        const JOURNAL_STORAGE_PREFIX = 'lesson_journals:';
+
+        function canUseLocalStorage() {
+            try {
+                return typeof window !== 'undefined' && !!window.localStorage;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function getJournalStorageKey(lessonId) {
+            return JOURNAL_STORAGE_PREFIX + String(lessonId);
+        }
+
+        function loadJournalForLesson(lessonId) {
+            if (!canUseLocalStorage()) return null;
+            const raw = window.localStorage.getItem(getJournalStorageKey(lessonId));
+            if (!raw) return null;
+            try {
+                const parsed = JSON.parse(raw);
+                return parsed && typeof parsed === 'object' ? parsed : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function removeJournalForLesson(lessonId) {
+            if (!canUseLocalStorage()) return;
+            window.localStorage.removeItem(getJournalStorageKey(lessonId));
+        }
+
+        function saveJournalForLesson(lessonId, payload) {
+            if (!canUseLocalStorage()) return;
+            window.localStorage.setItem(getJournalStorageKey(lessonId), JSON.stringify(payload || {}));
+        }
+
+        function getJournalButtonMeta(lesson) {
+            // /api/actual-lessons 응답에 포함된 journal_exists를 기준으로 판단합니다.
+            const hasWritten = lesson && lesson.journal_exists != null ? !!lesson.journal_exists : false;
+            if (hasWritten) {
+                return {
+                    label: '일지 수정',
+                    className: 'rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-[#00a832] hover:bg-green-100'
+                };
+            }
+            return {
+                label: '일지',
+                className: 'rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100 border border-amber-200'
+            };
+        }
+
         function formatDate(date) {
             return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
         }
@@ -401,6 +454,20 @@
             journalDate.value = formatDisplayDate(lessonDate || '');
             journalAge.value = formatLifeAge(lesson && lesson.student_birth_date, lessonDate || todayStr);
             journalTime.value = timeText === '-' ? '' : timeText;
+
+            // 저장된 일지가 있으면 입력값을 채웁니다.
+            if (lesson && lesson.journal) {
+                const journal = lesson.journal;
+                journalLessonContent.value = journal.lesson_content || '';
+                const defaultAmountType = JOURNAL_AMOUNT_OPTIONS[0] ? JOURNAL_AMOUNT_OPTIONS[0].value : '';
+                const validAmountType = JOURNAL_AMOUNT_OPTIONS.some((o) => o.value === journal.amount_type) ? journal.amount_type : defaultAmountType;
+                journalAmountType.value = validAmountType;
+                journalTime.value = journal.lesson_time || journalTime.value || '';
+                journalApprovalNumber.value = journal.approval_number || '';
+                journalParentConsultation.value = journal.parent_consultation || '';
+                journalHomework.value = journal.homework || '';
+            }
+
             journalModal.classList.remove('hidden');
         }
 
@@ -724,6 +791,7 @@
                 html += scheduledItems.map((lesson) => {
                     const timeText = getLessonTimeText(lesson);
                     const lessonColor = getLessonColor(lesson);
+                    const journalMeta = getJournalButtonMeta(lesson);
                     return ''
                         + '<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" style="border-left:4px solid ' + lessonColor + ';">'
                         + '  <div class="flex items-center justify-between gap-3">'
@@ -733,7 +801,7 @@
                         + '      </div>'
                         + '      <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">'
                         + '          <div class="rounded-full px-3 py-1 text-xs font-semibold" style="background-color:' + colorWithAlpha(lessonColor, 0.14) + ';color:' + darkenColor(lessonColor, 0.28) + ';">' + escapeHtml(timeText) + '</div>'
-                        + '          <button type="button" class="journal-lesson-btn rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-[#00a832] hover:bg-green-100" data-id="' + lesson.id + '">일지</button>'
+                        + '          <button type="button" class="journal-lesson-btn ' + journalMeta.className + '" data-id="' + lesson.id + '">' + escapeHtml(journalMeta.label) + '</button>'
                         + '          <button type="button" class="cancel-lesson-btn rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100" data-id="' + lesson.id + '">취소</button>'
                         + '      </div>'
                         + '  </div>'
@@ -746,6 +814,7 @@
                 html += cancelledItems.map((lesson) => {
                     const timeText = getLessonTimeText(lesson);
                     const lessonColor = getLessonColor(lesson);
+                    const journalMeta = getJournalButtonMeta(lesson);
                     return ''
                         + '<div class="rounded-xl border border-gray-200 bg-white/90 px-4 py-3 shadow-sm opacity-80" style="border-left:4px solid ' + lessonColor + ';">'
                         + '  <div class="flex items-center justify-between gap-3">'
@@ -755,7 +824,7 @@
                         + '      </div>'
                         + '      <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">'
                         + '          <div class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">' + escapeHtml(timeText) + '</div>'
-                        + '          <button type="button" class="journal-lesson-btn rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-[#00a832] hover:bg-green-100" data-id="' + lesson.id + '">일지</button>'
+                        + '          <button type="button" class="journal-lesson-btn ' + journalMeta.className + '" data-id="' + lesson.id + '">' + escapeHtml(journalMeta.label) + '</button>'
                         + '          <button type="button" class="restore-lesson-btn rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200" data-id="' + lesson.id + '">복구</button>'
                         + '      </div>'
                         + '  </div>'
@@ -790,7 +859,52 @@
 
         journalModalBackdrop.addEventListener('click', closeJournalModal);
         journalModalCloseBtn.addEventListener('click', closeJournalModal);
-        journalModalConfirmBtn.addEventListener('click', closeJournalModal);
+        journalModalConfirmBtn.addEventListener('click', async () => {
+            if (!currentJournalLesson) {
+                closeJournalModal();
+                return;
+            }
+
+            const lessonId = currentJournalLesson.id;
+            const payload = {
+                actual_lesson_id: lessonId,
+                lesson_content: journalLessonContent.value || '',
+                amount_type: journalAmountType.value || '',
+                lesson_time: journalTime.value || '',
+                approval_number: journalApprovalNumber.value || '',
+                parent_consultation: journalParentConsultation.value || '',
+                homework: journalHomework.value || '',
+            };
+
+            // "미작성"은 사용자가 실제로 채운 핵심 필드가 모두 비어 있을 때로 판단합니다.
+            const hasWritten =
+                [payload.lesson_content, payload.approval_number, payload.parent_consultation, payload.homework]
+                    .some((v) => String(v || '').trim().length > 0);
+
+            try {
+                if (!hasWritten) {
+                    const delRes = await fetch('/api/lesson-journals?actual_lesson_id=' + encodeURIComponent(String(lessonId)), {
+                        method: 'DELETE'
+                    });
+                    const delData = await delRes.json().catch(() => ({}));
+                    if (!delRes.ok || !delData.ok) throw new Error(delData.error || '일지 삭제 실패');
+                } else {
+                    const res = await fetch('/api/lesson-journals', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || !data.ok) throw new Error(data.error || '일지 저장 실패');
+                }
+
+                // 서버 join 값 반영을 위해 월 데이터 재로딩
+                await loadMonthLessons();
+                closeJournalModal();
+            } catch (err) {
+                alert(err.message || '일지 저장/수정 실패');
+            }
+        });
         journalAttachment.addEventListener('change', () => {
             const file = journalAttachment.files && journalAttachment.files[0];
             journalAttachmentName.textContent = file ? file.name : '선택된 파일 없음';

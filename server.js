@@ -36,6 +36,11 @@ app.get('/api/actual-lessons', actualLessonsHandler);
 app.post('/api/actual-lessons', actualLessonsHandler);
 app.patch('/api/actual-lessons', actualLessonsHandler);
 
+const lessonJournalsHandler = (await import('./api/lesson-journals.js')).default;
+app.get('/api/lesson-journals', lessonJournalsHandler);
+app.post('/api/lesson-journals', lessonJournalsHandler);
+app.delete('/api/lesson-journals', lessonJournalsHandler);
+
 const holidaysHandler = (await import('./api/holidays.js')).default;
 app.get('/api/holidays', holidaysHandler);
 
