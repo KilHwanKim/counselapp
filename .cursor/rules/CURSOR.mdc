@@ -1,0 +1,11 @@
+---
+description: Cursor setup bridge for counselapp
+alwaysApply: true
+---
+
+# Cursor Setup
+
+- Use `.cursor/rules/project.mdc` as the primary source of project-specific context.
+- `.cursor/rules/CURSOR.md` is documentation for humans; `.cursor/rules/CURSOR.mdc` is the Cursor-readable rule that makes this setup active.
+- Keep the existing project patterns: static HTML, Tailwind CDN, and Vercel deployment.
+- Assume the root `/` route is rewritten to `스마트스토어.html`.
