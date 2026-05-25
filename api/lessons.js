@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { syncActualLessonsForMonth } from './actual-lessons.js';
 
 if (typeof process !== 'undefined' && !process.env.VERCEL) {
   await import('dotenv/config');
@@ -46,35 +47,30 @@ export default async function handler(req, res) {
   const sql = neon(connectionString);
   const method = (req.method || 'GET').toUpperCase();
 
-  async function syncGeneratedActualLessons(lessonId, dayOfWeek) {
+  async function syncGeneratedActualLessons() {
+    const monthKeys = new Set();
+    const now = new Date();
+    for (let offset = 0; offset < 2; offset++) {
+      const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      monthKeys.add(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
+    }
+
     const months = await sql`
       SELECT DISTINCT date_trunc('month', lesson_date)::date AS month_start
       FROM actual_lessons
-      WHERE lesson_date >= CURRENT_DATE
+      WHERE lesson_date >= date_trunc('month', CURRENT_DATE)
       ORDER BY month_start
     `;
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
 
     for (const row of months || []) {
       const monthStart = row.month_start ? new Date(String(row.month_start).slice(0, 10) + 'T00:00:00') : null;
       if (!monthStart || Number.isNaN(monthStart.getTime())) continue;
-      const year = monthStart.getFullYear();
-      const month = monthStart.getMonth() + 1;
-      const lastDay = new Date(year, month, 0).getDate();
+      monthKeys.add(`${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`);
+    }
 
-      for (let d = 1; d <= lastDay; d++) {
-        const date = new Date(year, month - 1, d);
-        const jsDay = date.getDay() === 0 ? 7 : date.getDay();
-        if (jsDay !== dayOfWeek) continue;
-        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        if (dateStr < todayStr) continue;
-        await sql`
-          INSERT INTO actual_lessons (lesson_id, lesson_date)
-          VALUES (${lessonId}, ${dateStr})
-          ON CONFLICT (lesson_id, lesson_date) DO NOTHING
-        `;
-      }
+    for (const key of Array.from(monthKeys).sort()) {
+      const [year, month] = key.split('-').map(Number);
+      await syncActualLessonsForMonth(sql, year, month);
     }
   }
 
@@ -155,6 +151,7 @@ export default async function handler(req, res) {
           UPDATE lessons SET student_id = ${studentId}, end_time = ${endTime}, color = ${color}, updated_at = NOW()
           WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
         `;
+        await syncGeneratedActualLessons();
         return res.status(200).json({ ok: true, id: lessonId });
       } else {
         const inserted = await sql`
@@ -163,7 +160,7 @@ export default async function handler(req, res) {
           RETURNING id
         `;
         const lessonId = inserted && inserted[0] ? inserted[0].id : null;
-        if (lessonId) await syncGeneratedActualLessons(lessonId, dayOfWeek);
+        if (lessonId) await syncGeneratedActualLessons();
         return res.status(200).json({ ok: true, id: lessonId });
       }
     }

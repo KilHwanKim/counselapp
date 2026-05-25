@@ -69,17 +69,22 @@ export default async function handler(req, res) {
     if (method === 'GET') {
       const year = req.query && req.query.year != null ? parseInt(String(req.query.year), 10) : null;
       const month = req.query && req.query.month != null ? parseInt(String(req.query.month), 10) : null;
-      let fromDate, toDate;
+      let fromDate, toDate, targetYear, targetMonth;
       if (year != null && !Number.isNaN(year) && month != null && !Number.isNaN(month)) {
+        targetYear = year;
+        targetMonth = month;
         fromDate = `${year}-${String(month).padStart(2, '0')}-01`;
         const lastDay = new Date(year, month, 0).getDate();
         toDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       } else {
         const now = new Date();
-        fromDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-        toDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        targetYear = now.getFullYear();
+        targetMonth = now.getMonth() + 1;
+        fromDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
+        const lastDay = new Date(targetYear, targetMonth, 0).getDate();
+        toDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       }
+      await syncActualLessonsForMonth(sql, targetYear, targetMonth);
       const rows = await sql`
         SELECT al.id, al.lesson_id, al.lesson_date, al.created_at, al.status,
                l.day_of_week, l.start_time, l.end_time, l.student_id, l.color,
