@@ -1,0 +1,2 @@
+ALTER TABLE students
+ADD COLUMN IF NOT EXISTS disability_type VARCHAR(100);

@@ -35,17 +35,18 @@ export default async function handler(req, res) {
       if (q) {
         const pattern = '%' + q + '%';
         rows = await sql`
-          SELECT id, name, parent_phone, birth_date, first_visit_date, reg_date, student_type, notes
+          SELECT id, name, parent_phone, birth_date, first_visit_date, reg_date, student_type, disability_type, notes
           FROM students
           WHERE name ILIKE ${pattern}
              OR parent_phone ILIKE ${pattern}
              OR (student_type IS NOT NULL AND student_type ILIKE ${pattern})
+             OR (disability_type IS NOT NULL AND disability_type ILIKE ${pattern})
              OR (notes IS NOT NULL AND notes ILIKE ${pattern})
           ORDER BY id DESC
         `;
       } else {
         rows = await sql`
-          SELECT id, name, parent_phone, birth_date, first_visit_date, reg_date, student_type, notes
+          SELECT id, name, parent_phone, birth_date, first_visit_date, reg_date, student_type, disability_type, notes
           FROM students
           ORDER BY id DESC
         `;
@@ -58,6 +59,7 @@ export default async function handler(req, res) {
         first_visit_date: toDateString(r.first_visit_date),
         reg_date: toDateString(r.reg_date),
         student_type: r.student_type || '',
+        disability_type: r.disability_type || '',
         notes: r.notes || '',
       }));
       return res.status(200).json({ ok: true, students });
@@ -72,11 +74,12 @@ export default async function handler(req, res) {
       const first_visit_date = body.first_visit_date && String(body.first_visit_date).trim() ? String(body.first_visit_date).trim() : null;
       const reg_date = body.reg_date && String(body.reg_date).trim() ? String(body.reg_date).trim() : new Date().toISOString().slice(0, 10);
       const student_type = body.student_type != null ? String(body.student_type).trim() : null;
+      const disability_type = body.disability_type != null ? String(body.disability_type).trim() : null;
       const notes = body.notes != null ? String(body.notes).trim() : null;
 
       const rows = await sql`
-        INSERT INTO students (name, parent_phone, birth_date, first_visit_date, reg_date, student_type, notes)
-        VALUES (${name}, ${parent_phone}, ${birth_date}, ${first_visit_date}, ${reg_date}, ${student_type}, ${notes})
+        INSERT INTO students (name, parent_phone, birth_date, first_visit_date, reg_date, student_type, disability_type, notes)
+        VALUES (${name}, ${parent_phone}, ${birth_date}, ${first_visit_date}, ${reg_date}, ${student_type}, ${disability_type}, ${notes})
         RETURNING id
       `;
       const id = rows && rows[0] ? rows[0].id : null;
@@ -94,13 +97,14 @@ export default async function handler(req, res) {
       const first_visit_date = body.first_visit_date && String(body.first_visit_date).trim() ? String(body.first_visit_date).trim() : null;
       const reg_date = body.reg_date && String(body.reg_date).trim() ? String(body.reg_date).trim() : null;
       const student_type = body.student_type != null ? String(body.student_type).trim() : null;
+      const disability_type = body.disability_type != null ? String(body.disability_type).trim() : null;
       const notes = body.notes != null ? String(body.notes).trim() : null;
 
       await sql`
         UPDATE students
         SET name = ${name}, parent_phone = ${parent_phone}, birth_date = ${birth_date},
             first_visit_date = ${first_visit_date}, reg_date = ${reg_date},
-            student_type = ${student_type}, notes = ${notes},
+            student_type = ${student_type}, disability_type = ${disability_type}, notes = ${notes},
             updated_at = NOW()
         WHERE id = ${idParam}
       `;
