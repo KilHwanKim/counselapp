@@ -59,18 +59,43 @@ function sliceTime(value) {
   return value ? String(value).slice(0, 5) : '';
 }
 
+/** lessons.day_of_week convention: 1=월 … 7=일 */
+function dayOfWeekFromDate(dateStr) {
+  const s = toDateString(dateStr);
+  if (!s) return null;
+  const parts = s.split('-').map(Number);
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
+  const jsDay = d.getDay();
+  return jsDay === 0 ? 7 : jsDay;
+}
+
 function mapActualLessonRow(r) {
-  const fromLesson = !r.is_makeup && r.lesson_id;
-  const startTime = fromLesson ? sliceTime(r.lesson_start_time) : sliceTime(r.makeup_start_time);
-  const endTime = fromLesson ? sliceTime(r.lesson_end_time) : sliceTime(r.makeup_end_time);
-  const studentId = fromLesson ? r.lesson_student_id : r.makeup_student_id;
+  const lessonDate = toDateString(r.lesson_date);
+  const isMakeup = !!r.is_makeup;
+  const fromLesson = !isMakeup && r.lesson_id;
+  let startTime;
+  let endTime;
+  let studentId;
+  if (isMakeup) {
+    startTime = sliceTime(r.al_start_time);
+    endTime = sliceTime(r.al_end_time);
+    studentId = r.al_student_id;
+  } else if (fromLesson) {
+    startTime = sliceTime(r.al_start_time || r.lesson_start_time);
+    endTime = sliceTime(r.al_end_time || r.lesson_end_time);
+    studentId = r.al_student_id || r.lesson_student_id;
+  } else {
+    startTime = '';
+    endTime = '';
+    studentId = null;
+  }
   return {
     id: r.id,
     lesson_id: r.lesson_id,
-    lesson_date: toDateString(r.lesson_date),
+    lesson_date: lessonDate,
     status: r.status || 'scheduled',
-    is_makeup: !!r.is_makeup,
-    day_of_week: r.day_of_week,
+    is_makeup: isMakeup,
+    day_of_week: dayOfWeekFromDate(lessonDate),
     start_time: startTime,
     end_time: endTime,
     color: r.color || '',
@@ -98,7 +123,7 @@ async function findDateOverlapError(sql, lessonDate, startTime, endTimeNorm, exc
   const rows = await sql`
     SELECT al.id, al.status, al.is_makeup,
            l.start_time AS lesson_start_time, l.end_time AS lesson_end_time,
-           al.start_time AS makeup_start_time, al.end_time AS makeup_end_time
+           al.start_time AS al_start_time, al.end_time AS al_end_time
     FROM actual_lessons al
     LEFT JOIN lessons l ON l.id = al.lesson_id
     WHERE al.lesson_date = ${lessonDate}
@@ -106,8 +131,12 @@ async function findDateOverlapError(sql, lessonDate, startTime, endTimeNorm, exc
   for (const row of rows || []) {
     if (excludeId != null && row.id === excludeId) continue;
     if ((row.status || 'scheduled') === 'cancelled') continue;
-    const otherStart = row.is_makeup ? sliceTime(row.makeup_start_time) : sliceTime(row.lesson_start_time);
-    const otherEndRaw = row.is_makeup ? sliceTime(row.makeup_end_time) : sliceTime(row.lesson_end_time);
+    const otherStart = row.is_makeup
+      ? sliceTime(row.al_start_time)
+      : sliceTime(row.al_start_time || row.lesson_start_time);
+    const otherEndRaw = row.is_makeup
+      ? sliceTime(row.al_end_time)
+      : sliceTime(row.al_end_time || row.lesson_end_time);
     const otherEndNorm = otherEndRaw || defaultEndTime(otherStart);
     if (!otherStart) continue;
     if (overlaps(startTime, endTimeNorm, otherStart, otherEndNorm)) {
@@ -124,8 +153,11 @@ export async function syncActualLessonsForMonth(sql, year, month) {
   const toDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
   const result = await sql`
-    INSERT INTO actual_lessons (lesson_id, lesson_date)
-    SELECT l.id, gs.day::date
+    INSERT INTO actual_lessons (lesson_id, lesson_date, start_time, end_time, student_id)
+    SELECT l.id, gs.day::date,
+           l.start_time::time,
+           CASE WHEN l.end_time IS NOT NULL AND TRIM(l.end_time) <> '' THEN l.end_time::time ELSE NULL END,
+           l.student_id
     FROM lessons l
     CROSS JOIN generate_series(${fromDate}::date, ${toDate}::date, interval '1 day') AS gs(day)
     WHERE (CASE WHEN l.day_of_week = 7 THEN 0 ELSE l.day_of_week END) = EXTRACT(DOW FROM gs.day)::int
@@ -133,6 +165,48 @@ export async function syncActualLessonsForMonth(sql, year, month) {
     RETURNING id
   `;
   return { inserted: result?.length ?? 0 };
+}
+
+/** 과거 실제 수업에 변경 전 템플릿 시간·학생을 고정 (이미 스냅샷 있으면 유지) */
+export async function snapshotPastActualLessonsForLesson(sql, lessonId, oldLesson) {
+  const startTime = oldLesson.start_time ? String(oldLesson.start_time).slice(0, 5) : null;
+  const endTimeRaw = oldLesson.end_time ? String(oldLesson.end_time).slice(0, 5) : null;
+  const endTime = endTimeRaw || (startTime ? defaultEndTime(startTime) : null);
+  const studentId = oldLesson.student_id;
+  if (!startTime || !studentId) return;
+
+  await sql`
+    UPDATE actual_lessons
+    SET
+      start_time = COALESCE(start_time, ${startTime}::time),
+      end_time = COALESCE(end_time, ${endTime}::time),
+      student_id = COALESCE(student_id, ${studentId})
+    WHERE lesson_id = ${lessonId}
+      AND lesson_date < CURRENT_DATE
+      AND COALESCE(is_makeup, false) = false
+  `;
+}
+
+/** 요일 변경 시 오늘 이후·구 요일에 해당하는 정기 actual_lessons만 제거 */
+export async function deleteFutureActualLessonsOnOldSchedule(sql, lessonId, oldDayOfWeek) {
+  const result = await sql`
+    DELETE FROM actual_lessons
+    WHERE lesson_id = ${lessonId}
+      AND lesson_date >= CURRENT_DATE
+      AND COALESCE(is_makeup, false) = false
+      AND (CASE WHEN ${oldDayOfWeek} = 7 THEN 0 ELSE ${oldDayOfWeek} END) = EXTRACT(DOW FROM lesson_date)::int
+    RETURNING id
+  `;
+  return { deleted: result?.length ?? 0 };
+}
+
+/** 템플릿 요일 변경 후 당월·익월 actual_lessons 보충 생성 */
+export async function resyncActualLessonsAfterTemplateChange(sql) {
+  const now = new Date();
+  for (let offset = 0; offset < 2; offset++) {
+    const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    await syncActualLessonsForMonth(sql, date.getFullYear(), date.getMonth() + 1);
+  }
 }
 
 async function handleMakeupPost(sql, body, res) {
@@ -199,20 +273,20 @@ export default async function handler(req, res) {
       }
       const rows = await sql`
         SELECT al.id, al.lesson_id, al.lesson_date, al.created_at, al.status, al.is_makeup,
-               l.day_of_week, l.start_time AS lesson_start_time, l.end_time AS lesson_end_time,
+               l.start_time AS lesson_start_time, l.end_time AS lesson_end_time,
                l.student_id AS lesson_student_id, l.color,
-               al.start_time AS makeup_start_time, al.end_time AS makeup_end_time,
-               al.student_id AS makeup_student_id,
+               al.start_time AS al_start_time, al.end_time AS al_end_time,
+               al.student_id AS al_student_id,
                s.name AS student_name, s.birth_date AS student_birth_date,
 
                lj.id AS journal_id, lj.lesson_content, lj.amount_type, lj.lesson_time,
                lj.approval_number, lj.parent_consultation, lj.homework, lj.updated_at AS journal_updated_at
         FROM actual_lessons al
         LEFT JOIN lessons l ON l.id = al.lesson_id
-        LEFT JOIN students s ON s.id = COALESCE(l.student_id, al.student_id)
+        LEFT JOIN students s ON s.id = COALESCE(al.student_id, l.student_id)
         LEFT JOIN lesson_journals lj ON lj.actual_lesson_id = al.id
         WHERE al.lesson_date >= ${fromDate} AND al.lesson_date <= ${toDate}
-        ORDER BY al.lesson_date, COALESCE(l.start_time, to_char(al.start_time, 'HH24:MI'))
+        ORDER BY al.lesson_date, COALESCE(to_char(al.start_time, 'HH24:MI'), l.start_time, '')
       `;
       const list = (rows || []).map(mapActualLessonRow);
       return res.status(200).json({ ok: true, actual_lessons: list });

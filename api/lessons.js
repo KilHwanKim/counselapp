@@ -1,4 +1,9 @@
 import { neon } from '@neondatabase/serverless';
+import {
+  snapshotPastActualLessonsForLesson,
+  deleteFutureActualLessonsOnOldSchedule,
+  resyncActualLessonsAfterTemplateChange,
+} from './actual-lessons.js';
 
 if (typeof process !== 'undefined' && !process.env.VERCEL) {
   await import('dotenv/config');
@@ -134,12 +139,30 @@ export default async function handler(req, res) {
         if (conflict && conflict.length > 0) {
           return res.status(400).json({ ok: false, error: '해당 요일/시간에 이미 다른 수업이 있습니다.' });
         }
+
+        const oldRows = await sql`
+          SELECT student_id, day_of_week, start_time, end_time
+          FROM lessons WHERE id = ${editingId}
+        `;
+        const oldLesson = oldRows && oldRows[0] ? oldRows[0] : null;
+        if (oldLesson) {
+          await snapshotPastActualLessonsForLesson(sql, editingId, oldLesson);
+          if (oldLesson.day_of_week !== dayOfWeek) {
+            await deleteFutureActualLessonsOnOldSchedule(sql, editingId, oldLesson.day_of_week);
+          }
+        }
+
         await sql`
           UPDATE lessons
           SET student_id = ${studentId}, day_of_week = ${dayOfWeek}, start_time = ${startTime},
               end_time = ${endTime}, color = ${color}, updated_at = NOW()
           WHERE id = ${editingId}
         `;
+
+        if (oldLesson && oldLesson.day_of_week !== dayOfWeek) {
+          await resyncActualLessonsAfterTemplateChange(sql);
+        }
+
         return res.status(200).json({ ok: true, id: editingId });
       }
 
@@ -176,7 +199,7 @@ export default async function handler(req, res) {
       `;
       if (existing && existing.length > 0) {
         const lessonId = existing[0].id;
-        await sql`DELETE FROM actual_lessons WHERE lesson_id = ${lessonId}`;
+        await sql`DELETE FROM actual_lessons WHERE lesson_id = ${lessonId} AND lesson_date >= CURRENT_DATE`;
       }
       await sql`
         DELETE FROM lessons WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
