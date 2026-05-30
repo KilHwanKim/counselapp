@@ -28,7 +28,7 @@
 
 ## A. 운영 · 배포 (Vercel Cron)
 
-최근 커밋: 매월 1일 UTC에 **다음 달** `actual_lessons` 생성 (`/api/cron/sync-actual-lessons`).
+매월 1일 UTC Cron으로 **당월** `actual_lessons` 생성 (`/api/cron/sync-actual-lessons`).
 
 - [ ] Vercel Environment Variables 확인
   - [ ] `POSTGRES_URL` 또는 `DATABASE_URL`
@@ -46,7 +46,8 @@
   - [ ] `503` → DB URL 등 환경 변수 문제
 - [ ] Vercel **Logs**에서 `GET /api/cron/sync-actual-lessons` 200 기록 확인
 - [ ] (선택) 한국 시간 기준 실행 시각에 맞게 `vercel.json` `schedule` 조정 (Cron은 UTC)
-- [ ] (선택) 생성 규칙 재확인: “다음 달만” vs “당월+익월” 등
+- [x] 생성 규칙 수정 (2026-05-30): **Cron 당월** + `POST`만 sync. `GET`·`lessons` POST에서 sync 제거 (달력 탐색으로 12월까지 쌓이던 버그 수정). 미래 달 정리: `node scripts/cleanup-future-actual-lessons.js`
+- [x] (선택) Neon 2026-06~07 `actual_lessons` 확인 (2026-05-30): 6월 110건·`first_created` 12:11 UTC대(여러 GET), 7월 115건·`13:13:39` 일괄(7월 달력 1회 sync 추정). 보강 0건. 재실행: `node scripts/check-actual-lessons-jun-jul.js`
 
 **관련 파일**
 

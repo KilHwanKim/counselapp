@@ -71,6 +71,7 @@ alwaysApply: true
 - **서로 다른 타입을 `COALESCE`·`UNION`·`ORDER BY`에 섞지 말 것.**  
   예: `COALESCE(l.start_time, to_char(al.start_time, 'HH24:MI'))`
 - 정기 수업: `actual_lessons.lesson_id` + `lessons` 조인. 보강: `is_makeup = true`, `lesson_id` NULL, `student_id`·시간 컬럼 사용.
+- `actual_lessons` 월별 생성은 Cron·`POST`만 (`project.mdc` 참고). `GET /api/actual-lessons`는 sync 하지 않는다.
 - 스키마 변경 시 **새 `sql/0xx_*.sql`** 추가; 기존 적용 파일은 수정하지 않는다.
 
 ### API·프론트

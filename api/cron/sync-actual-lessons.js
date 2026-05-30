@@ -1,11 +1,9 @@
 import { neon } from '@neondatabase/serverless';
 import { syncActualLessonsForMonth } from '../actual-lessons.js';
 
-function nextCalendarMonth(from = new Date()) {
-  const y = from.getFullYear();
-  const m = from.getMonth();
-  const next = new Date(y, m + 1, 1);
-  return { year: next.getFullYear(), month: next.getMonth() + 1 };
+/** 매월 1일 Cron: 그 달(당월) 정기 수업만 lessons 템플릿에서 생성 */
+function currentCalendarMonth(from = new Date()) {
+  return { year: from.getFullYear(), month: from.getMonth() + 1 };
 }
 
 export default async function handler(req, res) {
@@ -27,7 +25,7 @@ export default async function handler(req, res) {
 
   try {
     const sql = neon(connectionString);
-    const { year, month } = nextCalendarMonth();
+    const { year, month } = currentCalendarMonth();
     const { inserted } = await syncActualLessonsForMonth(sql, year, month);
     return res.status(200).json({ ok: true, year, month, inserted });
   } catch (err) {

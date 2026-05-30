@@ -197,7 +197,6 @@ export default async function handler(req, res) {
         const lastDay = new Date(targetYear, targetMonth, 0).getDate();
         toDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       }
-      await syncActualLessonsForMonth(sql, targetYear, targetMonth);
       const rows = await sql`
         SELECT al.id, al.lesson_id, al.lesson_date, al.created_at, al.status, al.is_makeup,
                l.day_of_week, l.start_time AS lesson_start_time, l.end_time AS lesson_end_time,

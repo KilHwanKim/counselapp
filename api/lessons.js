@@ -1,5 +1,4 @@
 import { neon } from '@neondatabase/serverless';
-import { syncActualLessonsForMonth } from './actual-lessons.js';
 
 if (typeof process !== 'undefined' && !process.env.VERCEL) {
   await import('dotenv/config');
@@ -71,14 +70,6 @@ export default async function handler(req, res) {
   const sql = neon(connectionString);
   const method = (req.method || 'GET').toUpperCase();
 
-  async function syncGeneratedActualLessons() {
-    const now = new Date();
-    for (let offset = 0; offset < 2; offset++) {
-      const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-      await syncActualLessonsForMonth(sql, date.getFullYear(), date.getMonth() + 1);
-    }
-  }
-
   try {
     if (method === 'GET') {
       const rows = await sql`
@@ -149,7 +140,6 @@ export default async function handler(req, res) {
               end_time = ${endTime}, color = ${color}, updated_at = NOW()
           WHERE id = ${editingId}
         `;
-        await syncGeneratedActualLessons();
         return res.status(200).json({ ok: true, id: editingId });
       }
 
@@ -162,7 +152,6 @@ export default async function handler(req, res) {
           UPDATE lessons SET student_id = ${studentId}, end_time = ${endTime}, color = ${color}, updated_at = NOW()
           WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
         `;
-        await syncGeneratedActualLessons();
         return res.status(200).json({ ok: true, id: lessonId });
       } else {
         const inserted = await sql`
@@ -171,7 +160,6 @@ export default async function handler(req, res) {
           RETURNING id
         `;
         const lessonId = inserted && inserted[0] ? inserted[0].id : null;
-        if (lessonId) await syncGeneratedActualLessons();
         return res.status(200).json({ ok: true, id: lessonId });
       }
     }
