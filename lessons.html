@@ -574,38 +574,32 @@
                 alert('선택한 시간이 이미 등록된 수업과 겹칩니다. 다른 시간을 선택하세요.');
                 return;
             }
-            function doPost(useStartTime) {
-                var st = useStartTime != null ? useStartTime : startTime;
+            function doPost() {
+                var payload = {
+                    day_of_week: day,
+                    start_time: startTime,
+                    end_time: endTime,
+                    student_id: studentId,
+                    color: slotColor.value
+                };
+                if (isEdit && originalDay != null && excludeStart) {
+                    payload.original_day_of_week = originalDay;
+                    payload.original_start_time = excludeStart;
+                }
                 return fetch('/api/lessons', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ day_of_week: day, start_time: st, end_time: endTime, student_id: studentId, color: slotColor.value })
+                    body: JSON.stringify(payload)
                 }).then(function (r) { return r.json(); });
             }
-            var slotChanged = isEdit && originalDay != null && (originalDay !== day || (excludeStart && excludeStart !== startTime));
-            if (slotChanged) {
-                fetch('/api/lessons?day_of_week=' + originalDay + '&start_time=' + encodeURIComponent(excludeStart), { method: 'DELETE' })
-                    .then(function (r) { return r.json(); })
-                    .then(function (data) {
-                        if (!data.ok) throw new Error(data.error || '수정 실패');
-                        return doPost();
-                    })
-                    .then(function (data) {
-                        if (!data.ok) throw new Error(data.error || '저장 실패');
-                        return loadLessons();
-                    })
-                    .then(function () { renderLessons(); closeModal(); })
-                    .catch(function (err) { alert(err.message); });
-            } else {
-                var startToSend = (isEdit && excludeStart) ? excludeStart : startTime;
-                doPost(startToSend)
-                    .then(function (data) {
-                        if (!data.ok) throw new Error(data.error || '저장 실패');
-                        return loadLessons();
-                    })
-                    .then(function () { renderLessons(); closeModal(); })
-                    .catch(function (err) { alert(err.message); });
-            }
+            doPost()
+                .then(function (data) {
+                    if (!data.ok) throw new Error(data.error || '저장 실패');
+                    alert(isEdit ? '수업이 수정되었습니다.' : '수업이 등록되었습니다.');
+                    return loadLessons();
+                })
+                .then(function () { renderLessons(); closeModal(); })
+                .catch(function (err) { alert(err.message); });
         });
 
         loadLessons()

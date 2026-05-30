@@ -25,35 +25,22 @@ function parseStatus(value) {
   return 'scheduled';
 }
 
-// day_of_week: 1=Mon .. 7=Sun (DB). JS getDay(): 0=Sun, 1=Mon, .. 6=Sat
-function toJsDay(dayOfWeek) {
-  return dayOfWeek === 7 ? 0 : dayOfWeek;
-}
-
 /** Generate actual_lessons rows for one calendar month from recurring lessons (templates). */
 export async function syncActualLessonsForMonth(sql, year, month) {
   const lastDay = new Date(year, month, 0).getDate();
+  const fromDate = `${year}-${String(month).padStart(2, '0')}-01`;
+  const toDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-  const lessons = await sql`
-    SELECT id, day_of_week FROM lessons
+  const result = await sql`
+    INSERT INTO actual_lessons (lesson_id, lesson_date)
+    SELECT l.id, gs.day::date
+    FROM lessons l
+    CROSS JOIN generate_series(${fromDate}::date, ${toDate}::date, interval '1 day') AS gs(day)
+    WHERE (CASE WHEN l.day_of_week = 7 THEN 0 ELSE l.day_of_week END) = EXTRACT(DOW FROM gs.day)::int
+    ON CONFLICT (lesson_id, lesson_date) DO NOTHING
+    RETURNING id
   `;
-  let inserted = 0;
-  for (const lesson of lessons || []) {
-    const targetDow = toJsDay(lesson.day_of_week);
-    for (let d = 1; d <= lastDay; d++) {
-      const date = new Date(year, month - 1, d);
-      if (date.getDay() !== targetDow) continue;
-      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const result = await sql`
-        INSERT INTO actual_lessons (lesson_id, lesson_date)
-        VALUES (${lesson.id}, ${dateStr})
-        ON CONFLICT (lesson_id, lesson_date) DO NOTHING
-        RETURNING id
-      `;
-      if (result && result.length > 0) inserted += result.length;
-    }
-  }
-  return { inserted };
+  return { inserted: result?.length ?? 0 };
 }
 
 export default async function handler(req, res) {

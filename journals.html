@@ -444,6 +444,7 @@
 
                     selectedLessonId = lesson.id;
                     await loadMonthLessons();
+                    alert(!hasWritten ? '일지가 삭제되었습니다.' : '일지가 저장되었습니다.');
                 } catch (err) {
                     alert(err.message || '일지 저장/수정 실패');
                 }

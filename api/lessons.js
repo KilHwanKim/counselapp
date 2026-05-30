@@ -38,6 +38,30 @@ function overlaps(s1, e1, s2, e2) {
   return a < d && c < b;
 }
 
+function defaultEndTime(startTime) {
+  const [h, m] = startTime.split(':').map(Number);
+  const total = h * 60 + (m || 0) + 60;
+  const h2 = Math.floor(total / 60);
+  const m2 = total % 60;
+  return (h2 < 10 ? '0' + h2 : '' + h2) + ':' + (m2 < 10 ? '0' + m2 : '' + m2);
+}
+
+async function findOverlapError(sql, dayOfWeek, startTime, endTimeNorm, excludeLessonId) {
+  const sameDayRows = await sql`
+    SELECT id, start_time, end_time FROM lessons WHERE day_of_week = ${dayOfWeek}
+  `;
+  for (const row of sameDayRows || []) {
+    if (excludeLessonId != null && row.id === excludeLessonId) continue;
+    const otherStart = row.start_time ? String(row.start_time).slice(0, 5) : '';
+    const otherEnd = row.end_time ? String(row.end_time).slice(0, 5) : null;
+    const otherEndNorm = otherEnd || defaultEndTime(otherStart);
+    if (overlaps(startTime, endTimeNorm, otherStart, otherEndNorm)) {
+      return '선택한 시간이 이미 등록된 수업과 겹칩니다.';
+    }
+  }
+  return null;
+}
+
 export default async function handler(req, res) {
   const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
   if (!connectionString) {
@@ -48,29 +72,10 @@ export default async function handler(req, res) {
   const method = (req.method || 'GET').toUpperCase();
 
   async function syncGeneratedActualLessons() {
-    const monthKeys = new Set();
     const now = new Date();
     for (let offset = 0; offset < 2; offset++) {
       const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-      monthKeys.add(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
-    }
-
-    const months = await sql`
-      SELECT DISTINCT date_trunc('month', lesson_date)::date AS month_start
-      FROM actual_lessons
-      WHERE lesson_date >= date_trunc('month', CURRENT_DATE)
-      ORDER BY month_start
-    `;
-
-    for (const row of months || []) {
-      const monthStart = row.month_start ? new Date(String(row.month_start).slice(0, 10) + 'T00:00:00') : null;
-      if (!monthStart || Number.isNaN(monthStart.getTime())) continue;
-      monthKeys.add(`${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`);
-    }
-
-    for (const key of Array.from(monthKeys).sort()) {
-      const [year, month] = key.split('-').map(Number);
-      await syncActualLessonsForMonth(sql, year, month);
+      await syncActualLessonsForMonth(sql, date.getFullYear(), date.getMonth() + 1);
     }
   }
 
@@ -115,31 +120,37 @@ export default async function handler(req, res) {
         return res.status(400).json({ ok: false, error: 'color invalid (#RRGGBB)' });
       }
 
-      const endTimeNorm = endTime || (() => {
-        const [h, m] = startTime.split(':').map(Number);
-        const total = h * 60 + (m || 0) + 60;
-        const h2 = Math.floor(total / 60);
-        const m2 = total % 60;
-        return (h2 < 10 ? '0' + h2 : '' + h2) + ':' + (m2 < 10 ? '0' + m2 : '' + m2);
-      })();
+      const endTimeNorm = endTime || defaultEndTime(startTime);
 
-      const sameDayRows = await sql`
-        SELECT start_time, end_time FROM lessons WHERE day_of_week = ${dayOfWeek}
-      `;
-      for (const row of sameDayRows || []) {
-        const otherStart = row.start_time ? String(row.start_time).slice(0, 5) : '';
-        if (otherStart === startTime) continue;
-        const otherEnd = row.end_time ? String(row.end_time).slice(0, 5) : null;
-        const otherEndNorm = otherEnd || (() => {
-          const [h, m] = otherStart.split(':').map(Number);
-          const total = h * 60 + (m || 0) + 60;
-          const h2 = Math.floor(total / 60);
-          const m2 = total % 60;
-          return (h2 < 10 ? '0' + h2 : '' + h2) + ':' + (m2 < 10 ? '0' + m2 : '' + m2);
-        })();
-        if (overlaps(startTime, endTimeNorm, otherStart, otherEndNorm)) {
-          return res.status(400).json({ ok: false, error: '선택한 시간이 이미 등록된 수업과 겹칩니다.' });
+      const originalDay = body.original_day_of_week != null ? parseInt(String(body.original_day_of_week), 10) : null;
+      const originalStartTime = body.original_start_time ? parseTime(body.original_start_time) : null;
+      let editingId = null;
+      if (Number.isInteger(originalDay) && originalDay >= 1 && originalDay <= 7 && originalStartTime) {
+        const originalRows = await sql`
+          SELECT id FROM lessons WHERE day_of_week = ${originalDay} AND start_time = ${originalStartTime}
+        `;
+        if (originalRows && originalRows.length > 0) editingId = originalRows[0].id;
+      }
+
+      const overlapError = await findOverlapError(sql, dayOfWeek, startTime, endTimeNorm, editingId);
+      if (overlapError) return res.status(400).json({ ok: false, error: overlapError });
+
+      if (editingId) {
+        const conflict = await sql`
+          SELECT id FROM lessons
+          WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime} AND id <> ${editingId}
+        `;
+        if (conflict && conflict.length > 0) {
+          return res.status(400).json({ ok: false, error: '해당 요일/시간에 이미 다른 수업이 있습니다.' });
         }
+        await sql`
+          UPDATE lessons
+          SET student_id = ${studentId}, day_of_week = ${dayOfWeek}, start_time = ${startTime},
+              end_time = ${endTime}, color = ${color}, updated_at = NOW()
+          WHERE id = ${editingId}
+        `;
+        await syncGeneratedActualLessons();
+        return res.status(200).json({ ok: true, id: editingId });
       }
 
       const existing = await sql`
@@ -177,9 +188,7 @@ export default async function handler(req, res) {
       `;
       if (existing && existing.length > 0) {
         const lessonId = existing[0].id;
-        await sql`
-          DELETE FROM actual_lessons WHERE lesson_id = ${lessonId} AND lesson_date >= CURRENT_DATE
-        `;
+        await sql`DELETE FROM actual_lessons WHERE lesson_id = ${lessonId}`;
       }
       await sql`
         DELETE FROM lessons WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
