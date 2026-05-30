@@ -173,6 +173,7 @@
                         <div class="mt-4 flex flex-wrap items-center justify-between gap-2">
                             <p id="bulkHint" class="text-xs text-gray-400"></p>
                             <div class="flex items-center gap-2 flex-shrink-0">
+                                <button type="button" id="makeupBtn" class="hidden rounded-full bg-violet-50 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100">보강</button>
                                 <button type="button" id="bulkCancelBtn" class="hidden rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-100">일괄 취소</button>
                                 <button type="button" id="bulkRestoreBtn" class="hidden rounded-full bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200">일괄 복구</button>
                             </div>
@@ -190,6 +191,53 @@
                 </section>
             </div>
         </main>
+    </div>
+
+    <div id="makeupModal" class="fixed inset-0 z-50 hidden">
+        <div id="makeupModalBackdrop" class="absolute inset-0 bg-gray-900/45 backdrop-blur-sm"></div>
+        <div class="relative flex h-full items-center justify-center p-4 md:p-6">
+            <div class="relative w-full max-w-lg overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl">
+                <div class="border-b border-gray-200 px-5 py-4 md:px-6 md:py-5">
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold tracking-[0.16em] text-gray-400 uppercase">Makeup Lesson</p>
+                            <h3 class="mt-2 text-xl font-bold text-gray-900">보강 등록</h3>
+                            <p class="mt-1 text-sm text-gray-500">선택한 날짜에 추가 수업을 등록합니다.</p>
+                        </div>
+                        <button type="button" id="makeupModalCloseBtn" class="rounded-full border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">닫기</button>
+                    </div>
+                </div>
+                <form id="makeupForm" class="space-y-4 px-5 py-5 md:px-6 bg-gray-50/70">
+                    <label class="block">
+                        <span class="mb-1.5 block text-sm font-semibold text-gray-700">날짜</span>
+                        <input type="text" id="makeupDate" readonly class="w-full rounded-xl border border-gray-200 bg-gray-100 px-4 py-3 text-sm text-gray-700 outline-none">
+                    </label>
+                    <div class="block">
+                        <span class="mb-1.5 block text-sm font-semibold text-gray-700">학생</span>
+                        <input type="search" id="makeupStudentQuery" placeholder="이름으로 검색" autocomplete="off" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                        <input type="hidden" id="makeupStudentId" value="">
+                        <div id="makeupStudentResults" class="mt-2 max-h-40 overflow-y-auto rounded-xl border border-gray-200 bg-white hidden"></div>
+                        <p id="makeupStudentSelected" class="mt-2 hidden text-sm font-semibold text-violet-700"></p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="block">
+                            <span class="mb-1.5 block text-sm font-semibold text-gray-700">시작</span>
+                            <input type="time" id="makeupStartTime" required class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                        </label>
+                        <label class="block">
+                            <span class="mb-1.5 block text-sm font-semibold text-gray-700">종료</span>
+                            <input type="time" id="makeupEndTime" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
+                        </label>
+                    </div>
+                    <p class="text-xs text-gray-400">취소된 시간대는 겹쳐도 등록할 수 있습니다. 예정 수업과 겹치면 등록되지 않습니다.</p>
+                    <p id="makeupFormError" class="hidden text-sm font-medium text-red-600"></p>
+                </form>
+                <div class="flex justify-end gap-2 border-t border-gray-200 bg-white px-5 py-4 md:px-6">
+                    <button type="button" id="makeupModalCancelBtn" class="rounded-full border border-gray-200 px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">취소</button>
+                    <button type="submit" form="makeupForm" id="makeupSubmitBtn" class="rounded-full bg-violet-600 px-5 py-2 text-sm font-semibold text-white hover:bg-violet-700">등록</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="journalModal" class="fixed inset-0 z-50 hidden">
@@ -297,9 +345,25 @@
         const monthLessonCount = document.getElementById('monthLessonCount');
         const monthActiveDays = document.getElementById('monthActiveDays');
         const selectedDaySummary = document.getElementById('selectedDaySummary');
+        const makeupBtn = document.getElementById('makeupBtn');
         const bulkCancelBtn = document.getElementById('bulkCancelBtn');
         const bulkRestoreBtn = document.getElementById('bulkRestoreBtn');
         const bulkHint = document.getElementById('bulkHint');
+        const makeupModal = document.getElementById('makeupModal');
+        const makeupModalBackdrop = document.getElementById('makeupModalBackdrop');
+        const makeupModalCloseBtn = document.getElementById('makeupModalCloseBtn');
+        const makeupModalCancelBtn = document.getElementById('makeupModalCancelBtn');
+        const makeupForm = document.getElementById('makeupForm');
+        const makeupDate = document.getElementById('makeupDate');
+        const makeupStudentQuery = document.getElementById('makeupStudentQuery');
+        const makeupStudentId = document.getElementById('makeupStudentId');
+        const makeupStudentResults = document.getElementById('makeupStudentResults');
+        const makeupStudentSelected = document.getElementById('makeupStudentSelected');
+        const makeupStartTime = document.getElementById('makeupStartTime');
+        const makeupEndTime = document.getElementById('makeupEndTime');
+        const makeupFormError = document.getElementById('makeupFormError');
+        const makeupSubmitBtn = document.getElementById('makeupSubmitBtn');
+        let makeupSearchTimer = null;
         const journalModal = document.getElementById('journalModal');
         const journalModalBackdrop = document.getElementById('journalModalBackdrop');
         const journalModalTitle = document.getElementById('journalModalTitle');
@@ -549,6 +613,144 @@
             return (items || []).filter((item) => (item.status || 'scheduled') === 'cancelled');
         }
 
+        function updateDayActionButtons(scheduledItems, cancelledItems) {
+            if (!selectedDate) {
+                makeupBtn.classList.add('hidden');
+                bulkCancelBtn.classList.add('hidden');
+                bulkRestoreBtn.classList.add('hidden');
+                return;
+            }
+            makeupBtn.classList.remove('hidden');
+            bulkCancelBtn.classList.toggle('hidden', scheduledItems.length === 0);
+            bulkRestoreBtn.classList.toggle('hidden', cancelledItems.length === 0);
+        }
+
+        function resetMakeupForm() {
+            makeupForm.reset();
+            makeupStudentId.value = '';
+            makeupStudentResults.classList.add('hidden');
+            makeupStudentResults.innerHTML = '';
+            makeupStudentSelected.classList.add('hidden');
+            makeupStudentSelected.textContent = '';
+            makeupFormError.classList.add('hidden');
+            makeupFormError.textContent = '';
+            makeupStartTime.value = '14:00';
+            makeupEndTime.value = '15:00';
+        }
+
+        function openMakeupModal() {
+            if (!selectedDate) {
+                alert('날짜를 먼저 선택해 주세요.');
+                return;
+            }
+            resetMakeupForm();
+            makeupDate.value = formatDisplayDate(selectedDate);
+            makeupModal.classList.remove('hidden');
+            makeupStudentQuery.focus();
+        }
+
+        function closeMakeupModal() {
+            makeupModal.classList.add('hidden');
+            resetMakeupForm();
+        }
+
+        function selectMakeupStudent(student) {
+            if (!student) return;
+            makeupStudentId.value = String(student.id);
+            makeupStudentQuery.value = student.name || '';
+            makeupStudentSelected.textContent = '선택: ' + (student.name || '(이름 없음)');
+            makeupStudentSelected.classList.remove('hidden');
+            makeupStudentResults.classList.add('hidden');
+            makeupStudentResults.innerHTML = '';
+        }
+
+        function searchMakeupStudents(query) {
+            const q = String(query || '').trim();
+            if (!q) {
+                makeupStudentResults.classList.add('hidden');
+                makeupStudentResults.innerHTML = '';
+                return;
+            }
+            fetch('/api/students?q=' + encodeURIComponent(q))
+                .then((r) => r.json())
+                .then((data) => {
+                    if (!data.ok) throw new Error(data.error || '학생 검색 실패');
+                    const students = data.students || [];
+                    if (!students.length) {
+                        makeupStudentResults.innerHTML = '<p class="px-4 py-3 text-sm text-gray-500">검색 결과가 없습니다.</p>';
+                        makeupStudentResults.classList.remove('hidden');
+                        return;
+                    }
+                    makeupStudentResults.innerHTML = students.map((s) =>
+                        '<button type="button" class="makeup-student-option block w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-violet-50" data-id="' + s.id + '">' + escapeHtml(s.name || '(이름 없음)') + '</button>'
+                    ).join('');
+                    makeupStudentResults.classList.remove('hidden');
+                    makeupStudentResults.querySelectorAll('.makeup-student-option').forEach((btn) => {
+                        btn.addEventListener('click', () => {
+                            selectMakeupStudent({
+                                id: parseInt(btn.getAttribute('data-id'), 10),
+                                name: btn.textContent.trim()
+                            });
+                        });
+                    });
+                })
+                .catch((err) => {
+                    makeupFormError.textContent = err.message || '학생 검색 실패';
+                    makeupFormError.classList.remove('hidden');
+                });
+        }
+
+        function submitMakeupLesson(event) {
+            event.preventDefault();
+            makeupFormError.classList.add('hidden');
+            makeupFormError.textContent = '';
+
+            const studentId = parseInt(makeupStudentId.value, 10);
+            if (!Number.isInteger(studentId) || studentId < 1) {
+                makeupFormError.textContent = '학생을 선택해 주세요.';
+                makeupFormError.classList.remove('hidden');
+                return;
+            }
+
+            const startRaw = makeupStartTime.value;
+            const endRaw = makeupEndTime.value;
+            if (!startRaw) {
+                makeupFormError.textContent = '시작 시간을 입력해 주세요.';
+                makeupFormError.classList.remove('hidden');
+                return;
+            }
+
+            const startTime = startRaw.slice(0, 5);
+            const endTime = endRaw ? endRaw.slice(0, 5) : '';
+
+            makeupSubmitBtn.disabled = true;
+            fetch('/api/actual-lessons', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'makeup',
+                    student_id: studentId,
+                    lesson_date: selectedDate,
+                    start_time: startTime,
+                    end_time: endTime || undefined
+                })
+            })
+                .then((r) => r.json().then((data) => ({ ok: r.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok || !data.ok) throw new Error(data.error || '보강 등록 실패');
+                    closeMakeupModal();
+                    return loadMonthLessons();
+                })
+                .then(() => alert('보강 수업이 등록되었습니다.'))
+                .catch((err) => {
+                    makeupFormError.textContent = err.message || '보강 등록 실패';
+                    makeupFormError.classList.remove('hidden');
+                })
+                .finally(() => {
+                    makeupSubmitBtn.disabled = false;
+                });
+        }
+
         function buildLessonsMap(items) {
             const map = {};
             (items || []).forEach((item) => {
@@ -765,22 +967,18 @@
 
             if (!selectedDate) {
                 detailBody.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">날짜를 선택해 주세요.</div>';
-                bulkCancelBtn.classList.add('hidden');
-                bulkRestoreBtn.classList.add('hidden');
+                updateDayActionButtons([], []);
                 bulkHint.textContent = '';
                 return;
             }
+
+            updateDayActionButtons(scheduledItems, cancelledItems);
 
             if (!items.length) {
-                detailBody.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">이 날짜에는 등록된 실제 수업이 없습니다.</div>';
-                bulkCancelBtn.classList.add('hidden');
-                bulkRestoreBtn.classList.add('hidden');
+                detailBody.innerHTML = '<div class="rounded-xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center text-gray-500">이 날짜에는 등록된 실제 수업이 없습니다.<br><span class="text-xs text-gray-400 mt-2 inline-block">보강 버튼으로 수업을 추가할 수 있습니다.</span></div>';
                 bulkHint.textContent = '';
                 return;
             }
-
-            bulkCancelBtn.classList.toggle('hidden', scheduledItems.length === 0);
-            bulkRestoreBtn.classList.toggle('hidden', cancelledItems.length === 0);
             const scheduledCount = scheduledItems.length;
             const cancelledCount = cancelledItems.length;
             bulkHint.textContent = (scheduledCount === 0 && cancelledCount === 0)
@@ -795,12 +993,13 @@
                     const timeText = getLessonTimeText(lesson);
                     const lessonColor = getLessonColor(lesson);
                     const journalMeta = getJournalButtonMeta(lesson);
+                    const lessonTypeLabel = lesson.is_makeup ? '보강 수업' : '실제 수업 일정';
                     return ''
                         + '<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm" style="border-left:4px solid ' + lessonColor + ';">'
                         + '  <div class="flex items-center justify-between gap-3">'
                         + '      <div class="min-w-0">'
-                        + '          <p class="text-sm font-bold text-gray-900">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</p>'
-                        + '          <p class="text-xs text-gray-500 mt-1">실제 수업 일정</p>'
+                        + '          <p class="text-sm font-bold text-gray-900">' + escapeHtml(lesson.student_name || '(이름 없음)') + (lesson.is_makeup ? ' <span class="text-violet-600">· 보강</span>' : '') + '</p>'
+                        + '          <p class="text-xs text-gray-500 mt-1">' + lessonTypeLabel + '</p>'
                         + '      </div>'
                         + '      <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">'
                         + '          <div class="rounded-full px-3 py-1 text-xs font-semibold" style="background-color:' + colorWithAlpha(lessonColor, 0.14) + ';color:' + darkenColor(lessonColor, 0.28) + ';">' + escapeHtml(timeText) + '</div>'
@@ -818,12 +1017,13 @@
                     const timeText = getLessonTimeText(lesson);
                     const lessonColor = getLessonColor(lesson);
                     const journalMeta = getJournalButtonMeta(lesson);
+                    const cancelLabel = lesson.is_makeup ? '보강 취소' : '수업 취소';
                     return ''
                         + '<div class="rounded-xl border border-gray-200 bg-white/90 px-4 py-3 shadow-sm opacity-80" style="border-left:4px solid ' + lessonColor + ';">'
                         + '  <div class="flex items-center justify-between gap-3">'
                         + '      <div class="min-w-0">'
-                        + '          <p class="text-sm font-bold text-gray-700">' + escapeHtml(lesson.student_name || '(이름 없음)') + '</p>'
-                        + '          <p class="text-xs text-gray-500 mt-1">수업 취소</p>'
+                        + '          <p class="text-sm font-bold text-gray-700">' + escapeHtml(lesson.student_name || '(이름 없음)') + (lesson.is_makeup ? ' <span class="text-violet-500">· 보강</span>' : '') + '</p>'
+                        + '          <p class="text-xs text-gray-500 mt-1">' + cancelLabel + '</p>'
                         + '      </div>'
                         + '      <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">'
                         + '          <div class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">' + escapeHtml(timeText) + '</div>'
@@ -914,12 +1114,30 @@
             journalAttachmentName.textContent = file ? file.name : '선택된 파일 없음';
         });
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && !journalModal.classList.contains('hidden')) {
+            if (event.key !== 'Escape') return;
+            if (!makeupModal.classList.contains('hidden')) {
+                closeMakeupModal();
+                return;
+            }
+            if (!journalModal.classList.contains('hidden')) {
                 closeJournalModal();
             }
         });
         resetJournalForm();
 
+        makeupBtn.addEventListener('click', openMakeupModal);
+        makeupModalBackdrop.addEventListener('click', closeMakeupModal);
+        makeupModalCloseBtn.addEventListener('click', closeMakeupModal);
+        makeupModalCancelBtn.addEventListener('click', closeMakeupModal);
+        makeupForm.addEventListener('submit', submitMakeupLesson);
+        makeupStudentQuery.addEventListener('input', () => {
+            clearTimeout(makeupSearchTimer);
+            makeupStudentId.value = '';
+            makeupStudentSelected.classList.add('hidden');
+            makeupStudentSelected.textContent = '';
+            const q = makeupStudentQuery.value;
+            makeupSearchTimer = setTimeout(() => searchMakeupStudents(q), 250);
+        });
         bulkCancelBtn.addEventListener('click', () => {
             if (!selectedDate) return;
             if (!confirm('이 날짜의 예정 수업을 모두 취소할까요?')) return;
