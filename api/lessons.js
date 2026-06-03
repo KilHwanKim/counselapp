@@ -3,6 +3,7 @@ import {
   snapshotPastActualLessonsForLesson,
   deleteFutureActualLessonsOnOldSchedule,
   resyncActualLessonsAfterTemplateChange,
+  syncActualLessonsForMonth,
 } from './actual-lessons.js';
 
 if (typeof process !== 'undefined' && !process.env.VERCEL) {
@@ -183,6 +184,10 @@ export default async function handler(req, res) {
           RETURNING id
         `;
         const lessonId = inserted && inserted[0] ? inserted[0].id : null;
+        if (lessonId) {
+          const now = new Date();
+          await syncActualLessonsForMonth(sql, now.getFullYear(), now.getMonth() + 1);
+        }
         return res.status(200).json({ ok: true, id: lessonId });
       }
     }
