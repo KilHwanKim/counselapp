@@ -195,11 +195,24 @@ export default async function handler(req, res) {
       }
       if (!startTime) return res.status(400).json({ ok: false, error: 'start_time is required' });
       const existing = await sql`
-        SELECT id FROM lessons WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
+        SELECT id, student_id, day_of_week, start_time, end_time
+        FROM lessons WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
       `;
       if (existing && existing.length > 0) {
         const lessonId = existing[0].id;
-        await sql`DELETE FROM actual_lessons WHERE lesson_id = ${lessonId} AND lesson_date >= CURRENT_DATE`;
+        await snapshotPastActualLessonsForLesson(sql, lessonId, existing[0]);
+        await sql`
+          DELETE FROM actual_lessons
+          WHERE lesson_id = ${lessonId}
+            AND lesson_date >= CURRENT_DATE
+            AND COALESCE(is_makeup, false) = false
+        `;
+        await sql`
+          UPDATE actual_lessons
+          SET lesson_id = NULL
+          WHERE lesson_id = ${lessonId}
+            AND COALESCE(is_makeup, false) = false
+        `;
       }
       await sql`
         DELETE FROM lessons WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}

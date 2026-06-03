@@ -72,7 +72,6 @@ function dayOfWeekFromDate(dateStr) {
 function mapActualLessonRow(r) {
   const lessonDate = toDateString(r.lesson_date);
   const isMakeup = !!r.is_makeup;
-  const fromLesson = !isMakeup && r.lesson_id;
   let startTime;
   let endTime;
   let studentId;
@@ -80,14 +79,10 @@ function mapActualLessonRow(r) {
     startTime = sliceTime(r.al_start_time);
     endTime = sliceTime(r.al_end_time);
     studentId = r.al_student_id;
-  } else if (fromLesson) {
+  } else {
     startTime = sliceTime(r.al_start_time || r.lesson_start_time);
     endTime = sliceTime(r.al_end_time || r.lesson_end_time);
     studentId = r.al_student_id || r.lesson_student_id;
-  } else {
-    startTime = '';
-    endTime = '';
-    studentId = null;
   }
   return {
     id: r.id,
