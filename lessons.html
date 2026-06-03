@@ -468,6 +468,7 @@
                             return loadLessons();
                         })
                         .then(renderLessons)
+                        .then(function () { alert('수업이 삭제되었습니다.'); })
                         .catch(function (err) { alert(err.message); });
                 });
                 daySlot.appendChild(card);
