@@ -1,4 +1,4 @@
-import handler from '../../../api/actual-lessons.js';
+import handler from '../../../server/handlers/actual-lessons.js';
 import { runApiHandler } from '@/lib/run-api-handler.js';
 
 export async function GET(request) {

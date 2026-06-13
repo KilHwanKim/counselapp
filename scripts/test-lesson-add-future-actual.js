@@ -5,7 +5,7 @@
  */
 import 'dotenv/config';
 import pg from 'pg';
-import lessonsHandler from '../api/lessons.js';
+import lessonsHandler from '../server/handlers/lessons.js';
 
 const TEST_START = '23:47';
 const TEST_END = '23:48';

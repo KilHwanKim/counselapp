@@ -26,40 +26,40 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 app.get('/api/db-test', async (req, res) => {
-  const { default: handler } = await import('./api/db-test.js');
+  const { default: handler } = await import('./server/handlers/db-test.js');
   return handler(req, res);
 });
 
 app.get('/api/db-tables', async (req, res) => {
-  const { default: handler } = await import('./api/db-tables.js');
+  const { default: handler } = await import('./server/handlers/db-tables.js');
   return handler(req, res);
 });
 
-const studentsHandler = (await import('./api/students.js')).default;
+const studentsHandler = (await import('./server/handlers/students.js')).default;
 app.get('/api/students', studentsHandler);
 app.post('/api/students', studentsHandler);
 app.put('/api/students', studentsHandler);
 app.delete('/api/students', studentsHandler);
 
-const lessonsHandler = (await import('./api/lessons.js')).default;
+const lessonsHandler = (await import('./server/handlers/lessons.js')).default;
 app.get('/api/lessons', lessonsHandler);
 app.post('/api/lessons', lessonsHandler);
 app.delete('/api/lessons', lessonsHandler);
 
-const actualLessonsHandler = (await import('./api/actual-lessons.js')).default;
+const actualLessonsHandler = (await import('./server/handlers/actual-lessons.js')).default;
 app.get('/api/actual-lessons', actualLessonsHandler);
 app.post('/api/actual-lessons', actualLessonsHandler);
 app.patch('/api/actual-lessons', actualLessonsHandler);
 
-const cronSyncActualLessons = (await import('./api/cron/sync-actual-lessons.js')).default;
+const cronSyncActualLessons = (await import('./server/handlers/cron/sync-actual-lessons.js')).default;
 app.get('/api/cron/sync-actual-lessons', cronSyncActualLessons);
 
-const lessonJournalsHandler = (await import('./api/lesson-journals.js')).default;
+const lessonJournalsHandler = (await import('./server/handlers/lesson-journals.js')).default;
 app.get('/api/lesson-journals', lessonJournalsHandler);
 app.post('/api/lesson-journals', lessonJournalsHandler);
 app.delete('/api/lesson-journals', lessonJournalsHandler);
 
-const holidaysHandler = (await import('./api/holidays.js')).default;
+const holidaysHandler = (await import('./server/handlers/holidays.js')).default;
 app.get('/api/holidays', holidaysHandler);
 
 const server = app.listen(PORT, '0.0.0.0', () => {

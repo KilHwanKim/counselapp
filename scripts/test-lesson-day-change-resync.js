@@ -4,8 +4,8 @@
  */
 import 'dotenv/config';
 import pg from 'pg';
-import lessonsHandler from '../api/lessons.js';
-import { syncActualLessonsForMonth } from '../api/actual-lessons.js';
+import lessonsHandler from '../server/handlers/lessons.js';
+import { syncActualLessonsForMonth } from '../server/handlers/actual-lessons.js';
 
 const MARKER = '__test_lesson_dow_change__';
 const T1 = '23:45';
