@@ -3,7 +3,7 @@ import { upload } from '@vercel/blob/client';
 export async function uploadJournalAttachment(file, actualLessonId) {
     const pathname = 'journals/' + actualLessonId + '/' + file.name;
     return upload(pathname, file, {
-        access: 'public',
+        access: 'private',
         handleUploadUrl: '/api/journal-attachments/upload',
     });
 }

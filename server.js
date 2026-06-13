@@ -64,6 +64,9 @@ app.get('/api/journal-attachments', journalAttachmentsHandler);
 app.post('/api/journal-attachments', journalAttachmentsHandler);
 app.delete('/api/journal-attachments', journalAttachmentsHandler);
 
+const journalAttachmentDownloadHandler = (await import('./server/handlers/journal-attachment-download.js')).default;
+app.get('/api/journal-attachments/download', journalAttachmentDownloadHandler);
+
 const holidaysHandler = (await import('./server/handlers/holidays.js')).default;
 app.get('/api/holidays', holidaysHandler);
 

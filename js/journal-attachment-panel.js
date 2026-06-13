@@ -23,6 +23,10 @@ function getFileExtension(filename) {
     return name.slice(idx + 1).toLowerCase();
 }
 
+function attachmentDownloadUrl(attachmentId) {
+    return '/api/journal-attachments/download?id=' + encodeURIComponent(String(attachmentId));
+}
+
 function isAllowedFile(file) {
     const ext = getFileExtension(file && file.name);
     if (ext !== 'pdf' && ext !== 'hwp') {
@@ -130,7 +134,7 @@ export function mountJournalAttachmentPanel(container, options) {
             return '<li class="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5" data-existing-id="' + escapeHtml(String(item.id)) + '">'
                 + '<span class="shrink-0 text-lg" aria-hidden="true">📎</span>'
                 + '<div class="min-w-0 flex-1">'
-                + '  <a href="' + escapeHtml(item.blob_url) + '" target="_blank" rel="noopener noreferrer" class="truncate text-sm font-medium text-[#00a832] hover:underline">' + escapeHtml(item.original_name || '이름 없음') + '</a>'
+                + '  <a href="' + escapeHtml(attachmentDownloadUrl(item.id)) + '" target="_blank" rel="noopener noreferrer" class="truncate text-sm font-medium text-[#00a832] hover:underline">' + escapeHtml(item.original_name || '이름 없음') + '</a>'
                 + '  <p class="text-xs text-gray-500">' + escapeHtml(formatFileSize(item.size_bytes)) + '</p>'
                 + '</div>'
                 + '<button type="button" class="journal-attachment-delete shrink-0 rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-semibold text-gray-600 hover:bg-red-50 hover:border-red-200 hover:text-red-700" data-delete-id="' + escapeHtml(String(item.id)) + '">삭제</button>'
