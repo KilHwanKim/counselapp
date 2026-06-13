@@ -201,23 +201,13 @@ export default function IndexClient() {
 
                                 <div>
                                     <span className="mb-1.5 block text-sm font-semibold text-gray-700">첨부파일</span>
-                                    <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-gray-300 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between">
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium text-gray-700">첨부파일 UI</p>
-                                            <p id="journalAttachmentName" className="mt-1 truncate text-sm text-gray-500">선택된 파일 없음</p>
-                                        </div>
-                                        <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100">
-                                            파일 선택
-                                            <input type="file" id="journalAttachment" className="hidden" />
-                                        </label>
-                                    </div>
-                                    <p className="mt-2 text-xs text-gray-400">첨부파일은 UI만 제공되며, 현재 저장은 텍스트 필드만 지원합니다.</p>
+                                    <div id="journalAttachmentRoot" />
                                 </div>
                             </form>
                         </div>
 
                         <div className="flex flex-col gap-3 border-t border-gray-200 bg-white px-5 py-4 md:flex-row md:items-center md:justify-between md:px-6">
-                            <p className="text-xs text-gray-400">현재 일지 팝업은 UI만 구현되어 있으며 입력값은 저장되지 않습니다.</p>
+                            <p className="text-xs text-gray-400">저장 시 텍스트와 선택한 첨부파일이 함께 반영됩니다.</p>
                             <button type="button" id="journalModalConfirmBtn" className="inline-flex items-center justify-center rounded-full bg-[#00a832] px-5 py-2 text-sm font-semibold text-white hover:bg-green-700">확인</button>
                         </div>
                     </div>

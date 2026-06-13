@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { softDeleteAttachmentsForJournal } from './journal-attachments.js';
 
 // 로컬 개발 시 .env 로드 (Vercel 배포 환경에서는 이미 환경 변수 주입됨)
 if (typeof process !== 'undefined' && !process.env.VERCEL) {
@@ -78,7 +79,7 @@ export default async function handler(req, res) {
       };
 
       // Upsert: actual_lesson_id는 UNIQUE이므로 1개만 유지합니다.
-      await sql`
+      const rows = await sql`
         INSERT INTO lesson_journals (
           actual_lesson_id, lesson_content, amount_type, lesson_time, approval_number,
           parent_consultation, homework, updated_at
@@ -96,14 +97,27 @@ export default async function handler(req, res) {
           parent_consultation = EXCLUDED.parent_consultation,
           homework = EXCLUDED.homework,
           updated_at = NOW()
+        RETURNING id
       `;
 
-      return res.status(200).json({ ok: true });
+      const journalId = rows && rows[0] ? rows[0].id : null;
+      return res.status(200).json({ ok: true, journal_id: journalId });
     }
 
     if (method === 'DELETE') {
       if (!actualLessonId) {
         return res.status(400).json({ ok: false, error: 'actual_lesson_id is required' });
+      }
+
+      const journalRows = await sql`
+        SELECT id
+        FROM lesson_journals
+        WHERE actual_lesson_id = ${actualLessonId}
+        LIMIT 1
+      `;
+      const journalId = journalRows && journalRows[0] ? journalRows[0].id : null;
+      if (journalId) {
+        await softDeleteAttachmentsForJournal(sql, journalId);
       }
 
       await sql`

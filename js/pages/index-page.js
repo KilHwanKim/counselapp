@@ -3,6 +3,7 @@ import { formatDate, formatDisplayDate, formatLifeAge, isSunday, isSaturday } fr
 import { getLessonColor, colorWithAlpha, darkenColor } from '../utils/color.js';
 import { getLessonTimeText, compareLessonsByTime, getScheduledLessons, getCancelledLessons } from '../utils/lesson.js';
 import { JOURNAL_AMOUNT_OPTIONS } from '../constants/journal.js';
+import { mountJournalAttachmentPanel } from '../journal-attachment-panel.js';
 
 import { initAppShell } from '../app-header.js';
 
@@ -54,8 +55,12 @@ export function mountIndexPage() {
     const journalApprovalNumber = document.getElementById('journalApprovalNumber');
     const journalParentConsultation = document.getElementById('journalParentConsultation');
     const journalHomework = document.getElementById('journalHomework');
-    const journalAttachment = document.getElementById('journalAttachment');
-    const journalAttachmentName = document.getElementById('journalAttachmentName');
+    const journalAttachmentRoot = document.getElementById('journalAttachmentRoot');
+    let journalAttachmentPanel = null;
+
+    if (journalAttachmentRoot) {
+        journalAttachmentPanel = mountJournalAttachmentPanel(journalAttachmentRoot);
+    }
 
     const now = new Date();
     const todayStr = formatDate(now);
@@ -91,7 +96,7 @@ export function mountIndexPage() {
         journalForm.reset();
         journalDate.value = '';
         journalAge.value = '';
-        journalAttachmentName.textContent = '선택된 파일 없음';
+        if (journalAttachmentPanel) journalAttachmentPanel.clearPending();
         journalAmountType.innerHTML = buildJournalAmountOptionsHtml();
         if (JOURNAL_AMOUNT_OPTIONS.length > 0) {
             journalAmountType.value = JOURNAL_AMOUNT_OPTIONS[0].value;
@@ -127,6 +132,11 @@ export function mountIndexPage() {
         }
 
         journalModal.classList.remove('hidden');
+
+        if (journalAttachmentPanel && lesson && lesson.id) {
+            journalAttachmentPanel.setActualLessonId(lesson.id);
+            journalAttachmentPanel.load();
+        }
     }
 
     function closeJournalModal() {
@@ -591,10 +601,12 @@ export function mountIndexPage() {
             homework: journalHomework.value || '',
         };
 
-        // "미작성"은 사용자가 실제로 채운 핵심 필드가 모두 비어 있을 때로 판단합니다.
-        const hasWritten =
+        // "미작성"은 텍스트·첨부가 모두 없을 때로 판단합니다.
+        const hasText =
             [payload.lesson_content, payload.approval_number, payload.parent_consultation, payload.homework]
                 .some((v) => String(v || '').trim().length > 0);
+        const hasAttachments = journalAttachmentPanel ? journalAttachmentPanel.hasAnyAttachments() : false;
+        const hasWritten = hasText || hasAttachments;
 
         try {
             if (!hasWritten) {
@@ -611,6 +623,13 @@ export function mountIndexPage() {
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok || !data.ok) throw new Error(data.error || '일지 저장 실패');
+
+                if (journalAttachmentPanel && journalAttachmentPanel.hasPendingFiles()) {
+                    await journalAttachmentPanel.uploadPending({
+                        journalId: data.journal_id,
+                        actualLessonId: lessonId,
+                    });
+                }
             }
 
             // 서버 join 값 반영을 위해 월 데이터 재로딩
@@ -620,10 +639,6 @@ export function mountIndexPage() {
         } catch (err) {
             alert(err.message || '일지 저장/수정 실패');
         }
-    });
-    journalAttachment.addEventListener('change', () => {
-        const file = journalAttachment.files && journalAttachment.files[0];
-        journalAttachmentName.textContent = file ? file.name : '선택된 파일 없음';
     });
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;

@@ -3,6 +3,7 @@ import { formatDisplayDate, formatLifeAge } from '../utils/date.js';
 import { getLessonColor } from '../utils/color.js';
 import { getLessonTimeText, compareLessons } from '../utils/lesson.js';
 import { JOURNAL_AMOUNT_OPTIONS } from '../constants/journal.js';
+import { mountJournalAttachmentPanel } from '../journal-attachment-panel.js';
 
 import { initAppShell } from '../app-header.js';
 
@@ -30,6 +31,7 @@ export function mountJournalsPage() {
     let monthLessons = [];
     let filteredLessons = [];
     let selectedLessonId = null;
+    let journalAttachmentPanel = null;
 
     function getUnifiedLessonStatusMeta(lesson) {
         const cancelled = String(lesson.status || 'scheduled').toLowerCase() === 'cancelled';
@@ -152,7 +154,6 @@ export function mountJournalsPage() {
             + '      </div>'
             + '  </div>'
             + '</div>'
-            + '<div class="mt-2 text-xs text-gray-400">첨부파일은 현재 DB에 저장되지 않습니다(텍스트 저장만 지원).</div>'
             + '<div class="grid grid-cols-1 gap-4 mt-2">'
             + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
             + '      <p class="text-sm font-semibold text-gray-900 mb-2">수업내용</p>'
@@ -182,9 +183,9 @@ export function mountJournalsPage() {
             + '      <p class="text-sm font-semibold text-gray-900 mb-2">숙제</p>'
             + '      <textarea id="journalDetailHomework" rows="3" placeholder="숙제를 입력해 주세요." class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-green-400 focus:ring-2 focus:ring-green-100"></textarea>'
             + '  </section>'
-            + '  <section class="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-4">'
-            + '      <p class="text-sm font-semibold text-gray-900">첨부파일</p>'
-            + '      <p class="mt-1 text-xs text-gray-500">현재는 파일 UI만 제공되며 저장되지 않습니다.</p>'
+            + '  <section class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">'
+            + '      <p class="text-sm font-semibold text-gray-900 mb-2">첨부파일</p>'
+            + '      <div id="journalDetailAttachmentRoot"></div>'
             + '  </section>'
             + '</div>';
 
@@ -212,6 +213,16 @@ export function mountJournalsPage() {
         if (parentEl) parentEl.value = journal.parent_consultation || '';
         if (homeworkEl) homeworkEl.value = journal.homework || '';
 
+        const attachRoot = document.getElementById('journalDetailAttachmentRoot');
+        if (journalAttachmentPanel) {
+            journalAttachmentPanel.destroy();
+            journalAttachmentPanel = null;
+        }
+        if (attachRoot) {
+            journalAttachmentPanel = mountJournalAttachmentPanel(attachRoot, { actualLessonId: lesson.id });
+            journalAttachmentPanel.load();
+        }
+
         journalDetailSaveBtn.classList.remove('hidden');
         journalDetailSaveBtn.textContent = lesson.journal_exists ? '수정' : '저장';
         journalDetailSaveBtn.className =
@@ -229,9 +240,11 @@ export function mountJournalsPage() {
                 homework: homeworkEl ? homeworkEl.value || '' : ''
             };
 
-            const hasWritten =
+            const hasText =
                 [payload.lesson_content, payload.approval_number, payload.parent_consultation, payload.homework]
                     .some((v) => String(v || '').trim().length > 0);
+            const hasAttachments = journalAttachmentPanel ? journalAttachmentPanel.hasAnyAttachments() : false;
+            const hasWritten = hasText || hasAttachments;
 
             try {
                 if (!hasWritten) {
@@ -246,6 +259,13 @@ export function mountJournalsPage() {
                     });
                     const data = await res.json().catch(() => ({}));
                     if (!res.ok || !data.ok) throw new Error(data.error || '일지 저장 실패');
+
+                    if (journalAttachmentPanel && journalAttachmentPanel.hasPendingFiles()) {
+                        await journalAttachmentPanel.uploadPending({
+                            journalId: data.journal_id,
+                            actualLessonId: lesson.id,
+                        });
+                    }
                 }
 
                 selectedLessonId = lesson.id;
