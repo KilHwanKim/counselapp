@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>파일 첨부 UI 테스트</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #f5f6f7; }
+    </style>
+</head>
+<body class="min-h-screen p-6">
+    <div class="mx-auto max-w-2xl">
+        <h1 class="text-xl font-bold text-gray-800">파일 첨부 UI 테스트</h1>
+        <p class="mt-1 text-sm text-gray-500">공통 컴포넌트 <code class="text-xs bg-gray-200 px-1 rounded">/js/file-attachment.js</code> — 다중 선택·개별 삭제</p>
+
+        <section class="mt-8 rounded-lg bg-white p-6 shadow-md">
+            <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">기본 (제한 없음)</h2>
+            <div id="attach-basic" class="mt-4"></div>
+        </section>
+
+        <section class="mt-6 rounded-lg bg-white p-6 shadow-md">
+            <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">이미지·PDF, 최대 3개, 5MB</h2>
+            <div id="attach-limited" class="mt-4"></div>
+        </section>
+
+        <section class="mt-6 rounded-lg bg-white p-6 shadow-md">
+            <h2 class="text-sm font-bold text-gray-700 uppercase tracking-wide">동작 확인</h2>
+            <div class="mt-4 flex flex-wrap gap-2">
+                <button type="button" id="logBtn" class="rounded-md bg-[#4a5a69] px-4 py-2 text-sm font-medium text-white hover:bg-[#3e4d61]">선택 파일 로그</button>
+                <button type="button" id="clearBtn" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">기본 영역 비우기</button>
+                <button type="button" id="toggleDisabledBtn" class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">제한 영역 비활성 토글</button>
+            </div>
+            <pre id="output" class="mt-4 max-h-48 overflow-auto rounded-md bg-gray-900 p-4 text-xs text-green-200">// 버튼을 눌러 선택된 File 목록을 확인하세요.</pre>
+        </section>
+
+        <p class="mt-6 text-center text-xs text-gray-400">
+            <a href="/tests/db-connection.html" class="text-[#00a832] hover:underline">DB 연결 테스트</a>
+            · 저장 API는 아직 연동하지 않았습니다.
+        </p>
+    </div>
+
+    <script src="/js/file-attachment.js"></script>
+    <script>
+        var outputEl = document.getElementById('output');
+        var limitedDisabled = false;
+
+        var basicAttachment = FileAttachment.mount(document.getElementById('attach-basic'), {
+            label: '첨부파일',
+            hint: '여러 파일을 추가한 뒤 목록에서 개별 삭제할 수 있습니다.',
+            onChange: function (files) {
+                outputEl.textContent = '[기본] onChange — ' + files.length + '개\n'
+                    + files.map(function (f, i) { return (i + 1) + '. ' + f.name + ' (' + f.size + ' bytes)'; }).join('\n');
+            }
+        });
+
+        var limitedAttachment = FileAttachment.mount(document.getElementById('attach-limited'), {
+            label: '첨부파일 (제한)',
+            accept: 'image/*,.pdf',
+            maxFiles: 3,
+            maxSizeBytes: 5 * 1024 * 1024,
+            hint: 'image/*, .pdf · 최대 3개 · 파일당 5MB',
+            emptyText: '아직 첨부한 파일이 없습니다'
+        });
+
+        document.getElementById('logBtn').addEventListener('click', function () {
+            var basic = basicAttachment.getFiles();
+            var limited = limitedAttachment.getFiles();
+            outputEl.textContent = JSON.stringify({
+                basic: basic.map(function (f) { return { name: f.name, size: f.size, type: f.type }; }),
+                limited: limited.map(function (f) { return { name: f.name, size: f.size, type: f.type }; })
+            }, null, 2);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', function () {
+            basicAttachment.clear();
+            outputEl.textContent = '기본 영역을 비웠습니다.';
+        });
+
+        document.getElementById('toggleDisabledBtn').addEventListener('click', function () {
+            limitedDisabled = !limitedDisabled;
+            limitedAttachment.setDisabled(limitedDisabled);
+            outputEl.textContent = '제한 영역 disabled = ' + limitedDisabled;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+:root {
+    --header-height: 50px;
+    --hour-height: 112px;
+    --calendar-total-height: calc(10 * var(--hour-height));
+    --calendar-body-max-height: calc(100vh - 220px);
+}
+
+.lessons-page {
+    background-color: #f8fafc;
+}
+
+.lessons-page .calendar-container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.lessons-page .calendar-header {
+    display: grid;
+    grid-template-columns: 60px repeat(5, 1fr);
+    height: var(--header-height);
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    align-items: center;
+    font-weight: 700;
+    color: #475569;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.lessons-page .calendar-body {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    overflow-y: auto;
+    max-height: var(--calendar-body-max-height);
+    min-height: 320px;
+}
+
+.lessons-page .calendar-right {
+    position: relative;
+    height: var(--calendar-total-height);
+    min-height: var(--calendar-total-height);
+}
+
+.lessons-page .time-labels {
+    display: flex;
+    flex-direction: column;
+    background: #f8fafc;
+    border-right: 1px solid #e2e8f0;
+    height: var(--calendar-total-height);
+    flex-shrink: 0;
+}
+
+.lessons-page .hour-row {
+    height: var(--hour-height);
+    min-height: var(--hour-height);
+    border-bottom: 1px solid #f1f5f9;
+    box-sizing: border-box;
+    font-size: 12px;
+    color: #94a3b8;
+    padding: 6px;
+    text-align: right;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+}
+
+.lessons-page .grid-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    pointer-events: none;
+}
+
+.lessons-page .grid-column {
+    flex: 1;
+    border-right: 1px solid #f1f5f9;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.lessons-page .grid-column .hour-row {
+    height: var(--hour-height);
+    min-height: var(--hour-height);
+    border-bottom: 1px solid #f1f5f9;
+    flex: none;
+}
+
+.lessons-page .lesson-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    height: 100%;
+    pointer-events: none;
+}
+
+.lessons-page .lesson-slot {
+    position: relative;
+    height: 100%;
+    pointer-events: auto;
+}
+
+.lessons-page .lesson-card {
+    position: absolute;
+    left: 4px;
+    right: 4px;
+    padding: 10px;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid rgba(0, 0, 0, 0.2);
+    z-index: 10;
+    overflow: hidden;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.lessons-page .lesson-card:hover {
+    transform: scale(1.02);
+    z-index: 20;
+}
+
+.lessons-page .lesson-card .lesson-delete-btn {
+    opacity: 0;
+    transition: opacity 0.15s;
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.lessons-page .lesson-card:hover .lesson-delete-btn {
+    opacity: 1;
+}
+
+.lessons-page .lesson-card .lesson-delete-btn:hover {
+    background: #dc2626;
+}
+
+.lessons-page .color-option {
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.lessons-page .color-option:hover {
+    transform: scale(1.06);
+}
+
+.lessons-page .color-option.active {
+    border-color: #111827;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.12);
+}

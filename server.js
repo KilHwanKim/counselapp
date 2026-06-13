@@ -5,7 +5,22 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
+
+function printUrls(port) {
+  const base = `http://localhost:${port}`;
+  console.log('');
+  console.log(`  counselapp — ${base}`);
+  console.log(`  Main:              ${base}/`);
+  console.log(`  Students:          ${base}/students.html`);
+  console.log(`  Lessons:           ${base}/lessons.html`);
+  console.log(`  Journals:          ${base}/journals.html`);
+  console.log(`  File attach test:  ${base}/tests/file-attachment.html`);
+  console.log(`  DB test:           ${base}/tests/db-connection.html`);
+  console.log('');
+}
+
+console.log(`[counselapp] starting on port ${PORT}...`);
 
 app.use(express.json());
 app.use(express.static(__dirname));
@@ -47,11 +62,18 @@ app.delete('/api/lesson-journals', lessonJournalsHandler);
 const holidaysHandler = (await import('./api/holidays.js')).default;
 app.get('/api/holidays', holidaysHandler);
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-  console.log(`  Main:     http://localhost:${PORT}/`);
-  console.log(`  Students: http://localhost:${PORT}/students.html`);
-  console.log(`  Lessons:  http://localhost:${PORT}/lessons.html`);
-  console.log(`  Journals: http://localhost:${PORT}/journals.html`);
-  console.log(`  DB Test:  http://localhost:${PORT}/tests/db-connection.html`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`[counselapp] ready`);
+  printUrls(PORT);
+});
+
+server.on('error', (err) => {
+  if (err && err.code === 'EADDRINUSE') {
+    console.error(`[counselapp] port ${PORT} is already in use.`);
+    console.error('Another process may already be serving — try these URLs:');
+    printUrls(PORT);
+  } else {
+    console.error('[counselapp] failed to start:', err.message || err);
+  }
+  process.exit(1);
 });

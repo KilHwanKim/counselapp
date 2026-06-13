@@ -1,16 +1,8 @@
 {
-  "buildCommand": "npm run migrate",
-  "outputDirectory": ".",
   "crons": [
     {
       "path": "/api/cron/sync-actual-lessons",
       "schedule": "0 0 1 * *"
     }
-  ],
-  "rewrites": [
-  { "source": "/", "destination": "/index.html" },
-  { "source": "/tests", "destination": "/tests/db-connection.html" },
-  { "source": "/students", "destination": "/students.html" },
-  { "source": "/lessons", "destination": "/lessons.html" }
-]
+  ]
 }

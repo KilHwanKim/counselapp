@@ -1,0 +1,19 @@
+@import '../css/calendar.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    font-family: 'Pretendard', sans-serif;
+    background-color: #f5f6f7;
+}
+
+.sidebar-item:hover {
+    background-color: #3e4d61;
+}
+
+.active-menu {
+    background-color: #2c3949;
+    border-left: 4px solid #00c73c;
+}
