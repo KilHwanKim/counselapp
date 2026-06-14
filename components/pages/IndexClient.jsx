@@ -3,9 +3,11 @@
 import { useCallback } from 'react';
 import LegacyMount from '@/components/LegacyMount';
 import { mountIndexPage } from '@/js/pages/index-page.js';
+import { installStudentPickerGlobal } from '@/lib/student-picker.js';
 
 export default function IndexClient() {
     const mount = useCallback(() => {
+        installStudentPickerGlobal();
         mountIndexPage();
     }, []);
 
@@ -114,10 +116,11 @@ export default function IndexClient() {
                             </label>
                             <div className="block">
                                 <span className="mb-1.5 block text-sm font-semibold text-gray-700">학생</span>
-                                <input type="search" id="makeupStudentQuery" placeholder="이름으로 검색" autoComplete="off" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
-                                <input type="hidden" id="makeupStudentId" defaultValue="" />
-                                <div id="makeupStudentResults" className="mt-2 max-h-40 overflow-y-auto rounded-xl border border-gray-200 bg-white hidden" />
-                                <p id="makeupStudentSelected" className="mt-2 hidden text-sm font-semibold text-violet-700" />
+                                <div className="flex flex-wrap items-stretch gap-2">
+                                    <input type="text" id="makeupStudentName" readOnly placeholder="학생 선택" className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 outline-none" />
+                                    <input type="hidden" id="makeupStudentId" defaultValue="" />
+                                    <button type="button" id="makeupPickStudent" className="shrink-0 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700">학생 선택</button>
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <label className="block">

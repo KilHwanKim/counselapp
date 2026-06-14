@@ -31,15 +31,13 @@ export function mountIndexPage() {
     const makeupModalCancelBtn = document.getElementById('makeupModalCancelBtn');
     const makeupForm = document.getElementById('makeupForm');
     const makeupDate = document.getElementById('makeupDate');
-    const makeupStudentQuery = document.getElementById('makeupStudentQuery');
+    const makeupStudentName = document.getElementById('makeupStudentName');
     const makeupStudentId = document.getElementById('makeupStudentId');
-    const makeupStudentResults = document.getElementById('makeupStudentResults');
-    const makeupStudentSelected = document.getElementById('makeupStudentSelected');
+    const makeupPickStudent = document.getElementById('makeupPickStudent');
     const makeupStartTime = document.getElementById('makeupStartTime');
     const makeupEndTime = document.getElementById('makeupEndTime');
     const makeupFormError = document.getElementById('makeupFormError');
     const makeupSubmitBtn = document.getElementById('makeupSubmitBtn');
-    let makeupSearchTimer = null;
     const journalModal = document.getElementById('journalModal');
     const journalModalBackdrop = document.getElementById('journalModalBackdrop');
     const journalModalTitle = document.getElementById('journalModalTitle');
@@ -160,10 +158,8 @@ export function mountIndexPage() {
     function resetMakeupForm() {
         makeupForm.reset();
         makeupStudentId.value = '';
-        makeupStudentResults.classList.add('hidden');
-        makeupStudentResults.innerHTML = '';
-        makeupStudentSelected.classList.add('hidden');
-        makeupStudentSelected.textContent = '';
+        makeupStudentName.value = '';
+        makeupStudentName.placeholder = '학생 선택';
         makeupFormError.classList.add('hidden');
         makeupFormError.textContent = '';
         makeupStartTime.value = '14:00';
@@ -178,7 +174,6 @@ export function mountIndexPage() {
         resetMakeupForm();
         makeupDate.value = formatDisplayDate(selectedDate);
         makeupModal.classList.remove('hidden');
-        makeupStudentQuery.focus();
     }
 
     function closeMakeupModal() {
@@ -189,47 +184,7 @@ export function mountIndexPage() {
     function selectMakeupStudent(student) {
         if (!student) return;
         makeupStudentId.value = String(student.id);
-        makeupStudentQuery.value = student.name || '';
-        makeupStudentSelected.textContent = '선택: ' + (student.name || '(이름 없음)');
-        makeupStudentSelected.classList.remove('hidden');
-        makeupStudentResults.classList.add('hidden');
-        makeupStudentResults.innerHTML = '';
-    }
-
-    function searchMakeupStudents(query) {
-        const q = String(query || '').trim();
-        if (!q) {
-            makeupStudentResults.classList.add('hidden');
-            makeupStudentResults.innerHTML = '';
-            return;
-        }
-        fetch('/api/students?q=' + encodeURIComponent(q))
-            .then((r) => r.json())
-            .then((data) => {
-                if (!data.ok) throw new Error(data.error || '학생 검색 실패');
-                const students = data.students || [];
-                if (!students.length) {
-                    makeupStudentResults.innerHTML = '<p class="px-4 py-3 text-sm text-gray-500">검색 결과가 없습니다.</p>';
-                    makeupStudentResults.classList.remove('hidden');
-                    return;
-                }
-                makeupStudentResults.innerHTML = students.map((s) =>
-                    '<button type="button" class="makeup-student-option block w-full px-4 py-2.5 text-left text-sm text-gray-800 hover:bg-violet-50" data-id="' + s.id + '">' + escapeHtml(s.name || '(이름 없음)') + '</button>'
-                ).join('');
-                makeupStudentResults.classList.remove('hidden');
-                makeupStudentResults.querySelectorAll('.makeup-student-option').forEach((btn) => {
-                    btn.addEventListener('click', () => {
-                        selectMakeupStudent({
-                            id: parseInt(btn.getAttribute('data-id'), 10),
-                            name: btn.textContent.trim()
-                        });
-                    });
-                });
-            })
-            .catch((err) => {
-                makeupFormError.textContent = err.message || '학생 검색 실패';
-                makeupFormError.classList.remove('hidden');
-            });
+        makeupStudentName.value = student.name || '';
     }
 
     function submitMakeupLesson(event) {
@@ -657,13 +612,12 @@ export function mountIndexPage() {
     makeupModalCloseBtn.addEventListener('click', closeMakeupModal);
     makeupModalCancelBtn.addEventListener('click', closeMakeupModal);
     makeupForm.addEventListener('submit', submitMakeupLesson);
-    makeupStudentQuery.addEventListener('input', () => {
-        clearTimeout(makeupSearchTimer);
-        makeupStudentId.value = '';
-        makeupStudentSelected.classList.add('hidden');
-        makeupStudentSelected.textContent = '';
-        const q = makeupStudentQuery.value;
-        makeupSearchTimer = setTimeout(() => searchMakeupStudents(q), 250);
+    makeupPickStudent.addEventListener('click', () => {
+        if (typeof window.StudentPicker !== 'object' || typeof window.StudentPicker.open !== 'function') {
+            alert('학생 선택 기능을 불러오지 못했습니다. 페이지를 새로고침해 주세요.');
+            return;
+        }
+        window.StudentPicker.open(selectMakeupStudent);
     });
     bulkCancelBtn.addEventListener('click', () => {
         if (!selectedDate) return;
