@@ -27,7 +27,7 @@ function normalizeStr(value, maxLen) {
 function normalizeAmountType(value) {
   const v = String(value || '').trim();
   if (!v) return null;
-  const allowed = new Set(['basic', 'makeup', 'evaluation', 'consulting']);
+  const allowed = new Set(['bada', 'baga', 'bana', 'bara', 'bama']);
   return allowed.has(v) ? v : null;
 }
 
