@@ -9,6 +9,10 @@
     var countEl = null;
     var onSelect = null;
     var escHandler = null;
+    var VISIBLE_ROW_COUNT = 10;
+    var ROW_HEIGHT_PX = 41;
+    var LIST_HEIGHT_PX = VISIBLE_ROW_COUNT * ROW_HEIGHT_PX + ROW_HEIGHT_PX;
+    var PICKER_VERSION = '4';
 
     function escapeHtml(str) {
         if (str == null) return '';
@@ -78,42 +82,55 @@
         }
     }
 
+    function ensureModal() {
+        var existing = document.getElementById('student-picker-modal');
+        if (existing && existing.getAttribute('data-version') !== PICKER_VERSION) {
+            existing.remove();
+            modal = null;
+            listEl = null;
+            searchEl = null;
+            countEl = null;
+        }
+        if (modal) return;
+        var t = document.createElement('div');
+        t.id = 'student-picker-modal';
+        t.setAttribute('data-version', PICKER_VERSION);
+        t.className = 'fixed inset-0 hidden';
+        t.style.zIndex = '100';
+        t.innerHTML =
+            '<div class="absolute inset-0 bg-black/50" id="student-picker-backdrop"></div>' +
+            '<div class="absolute inset-0 flex items-center justify-center p-4">' +
+            '<div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="student-picker-title">' +
+            '<div class="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-200 shrink-0">' +
+            '<div class="min-w-0">' +
+            '<h3 id="student-picker-title" class="text-base font-bold text-gray-900">학생 선택</h3>' +
+            '<p id="student-picker-count" class="mt-0.5 text-xs text-gray-500"></p>' +
+            '</div>' +
+            '<button type="button" id="student-picker-close" class="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="닫기">' +
+            '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/></svg>' +
+            '</button>' +
+            '</div>' +
+            '<div class="px-4 py-3 border-b border-gray-100 shrink-0">' +
+            '<input type="search" id="student-picker-search" placeholder="이름으로 검색" autocomplete="off" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#00c73c] focus:border-[#00c73c]">' +
+            '</div>' +
+            '<div id="student-picker-list" class="overflow-y-auto overflow-x-hidden" style="height:' + LIST_HEIGHT_PX + 'px;max-height:' + LIST_HEIGHT_PX + 'px"></div>' +
+            '<div class="px-4 py-3 border-t border-gray-200 shrink-0 flex justify-end">' +
+            '<button type="button" id="student-picker-cancel" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">취소</button>' +
+            '</div></div></div></div>';
+        document.body.appendChild(t);
+        modal = t;
+        listEl = document.getElementById('student-picker-list');
+        searchEl = document.getElementById('student-picker-search');
+        countEl = document.getElementById('student-picker-count');
+        document.getElementById('student-picker-backdrop').addEventListener('click', close);
+        document.getElementById('student-picker-cancel').addEventListener('click', close);
+        document.getElementById('student-picker-close').addEventListener('click', close);
+        searchEl.addEventListener('input', function () { renderList(window.__studentPickerStudents || [], searchEl.value); });
+    }
+
     function open(callback) {
         onSelect = callback;
-        if (!modal) {
-            var t = document.createElement('div');
-            t.id = 'student-picker-modal';
-            t.className = 'fixed inset-0 z-[60] hidden';
-            t.innerHTML =
-                '<div class="absolute inset-0 bg-black/50" id="student-picker-backdrop"></div>' +
-                '<div class="absolute inset-0 flex items-center justify-center p-4">' +
-                '<div class="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[min(520px,85vh)] overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="student-picker-title">' +
-                '<div class="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-200 shrink-0">' +
-                '<div class="min-w-0">' +
-                '<h3 id="student-picker-title" class="text-base font-bold text-gray-900">학생 선택</h3>' +
-                '<p id="student-picker-count" class="mt-0.5 text-xs text-gray-500"></p>' +
-                '</div>' +
-                '<button type="button" id="student-picker-close" class="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="닫기">' +
-                '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z"/></svg>' +
-                '</button>' +
-                '</div>' +
-                '<div class="px-4 py-3 border-b border-gray-100 shrink-0">' +
-                '<input type="search" id="student-picker-search" placeholder="이름으로 검색" autocomplete="off" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#00c73c] focus:border-[#00c73c]">' +
-                '</div>' +
-                '<div id="student-picker-list" class="flex-1 min-h-0 overflow-y-auto"></div>' +
-                '<div class="px-4 py-3 border-t border-gray-200 shrink-0 flex justify-end">' +
-                '<button type="button" id="student-picker-cancel" class="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">취소</button>' +
-                '</div></div></div></div>';
-            document.body.appendChild(t);
-            modal = t;
-            listEl = document.getElementById('student-picker-list');
-            searchEl = document.getElementById('student-picker-search');
-            countEl = document.getElementById('student-picker-count');
-            document.getElementById('student-picker-backdrop').addEventListener('click', close);
-            document.getElementById('student-picker-cancel').addEventListener('click', close);
-            document.getElementById('student-picker-close').addEventListener('click', close);
-            searchEl.addEventListener('input', function () { renderList(window.__studentPickerStudents || [], searchEl.value); });
-        }
+        ensureModal();
         modal.classList.remove('hidden');
         listEl.innerHTML = '<p class="px-4 py-8 text-center text-sm text-gray-500">로딩 중...</p>';
         if (countEl) countEl.textContent = '';
@@ -135,5 +152,23 @@
             });
     }
 
-    window.StudentPicker = { open: open, close: close };
+    function bindButton(button, options) {
+        options = options || {};
+        if (!button) return;
+        button.addEventListener('click', function () {
+            open(function (student) {
+                if (!student) return;
+                if (options.idEl) options.idEl.value = student.id != null ? String(student.id) : '';
+                if (options.nameEl) {
+                    options.nameEl.value = student.name || '';
+                    if (options.clearPlaceholder !== undefined) {
+                        options.nameEl.placeholder = student.name ? '' : options.clearPlaceholder;
+                    }
+                }
+                if (typeof options.onSelect === 'function') options.onSelect(student);
+            });
+        });
+    }
+
+    window.StudentPicker = { open: open, close: close, bindButton: bindButton };
 })();

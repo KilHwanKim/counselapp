@@ -328,14 +328,11 @@ export function mountJournalsPage() {
         loadMonthLessons();
     });
 
-    journalPickStudent.addEventListener('click', () => {
-        StudentPicker.open((student) => {
-            if (!student || student.id == null) return;
-            journalStudentId.value = String(student.id);
-            journalStudentName.value = student.name || '';
-            journalStudentName.placeholder = '';
-            applyFilters();
-        });
+    StudentPicker.bindButton(journalPickStudent, {
+        nameEl: journalStudentName,
+        idEl: journalStudentId,
+        clearPlaceholder: '전체 학생',
+        onSelect: () => applyFilters(),
     });
 
     journalClearStudent.addEventListener('click', () => {

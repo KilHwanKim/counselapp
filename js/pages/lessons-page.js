@@ -243,11 +243,9 @@ export function mountLessonsPage() {
     slotModalBackdrop.addEventListener('click', closeModal);
     slotCancelBtn.addEventListener('click', closeModal);
 
-    slotPickStudent.addEventListener('click', function () {
-        StudentPicker.open(function (student) {
-            slotStudentId.value = student.id;
-            slotStudentName.value = student.name || '';
-        });
+    StudentPicker.bindButton(slotPickStudent, {
+        nameEl: slotStudentName,
+        idEl: slotStudentId,
     });
 
     slotSaveBtn.addEventListener('click', function () {
