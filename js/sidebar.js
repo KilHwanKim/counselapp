@@ -22,6 +22,10 @@
         const studentsCls = activeMenu === 'students' ? ' active-menu' : '';
         const lessonsCls = activeMenu === 'lessons' ? ' active-menu' : '';
         const journalsCls = activeMenu === 'journals' ? ' active-menu' : '';
+        const smsSendCls = activeMenu === 'sms-send' ? ' active-menu' : '';
+        const smsScheduledCls = activeMenu === 'sms-scheduled' ? ' active-menu' : '';
+        const smsTemplatesCls = activeMenu === 'sms-templates' ? ' active-menu' : '';
+        const smsHistoryCls = activeMenu === 'sms-history' ? ' active-menu' : '';
         return `
         <aside id="app-sidebar" class="w-64 min-w-[16rem] bg-[#4a5a69] text-white flex-shrink-0 flex flex-col min-h-screen">
             <div class="p-5 bg-[#3e4d61] flex items-center justify-between flex-shrink-0">
@@ -39,12 +43,18 @@
                 <a href="/journals.html" class="sidebar-item${journalsCls} block px-5 py-3 flex items-center gap-3 transition">
                     <span>📝</span> 일지 조회
                 </a>
-                <div class="px-5 py-3 mt-4 text-xs text-gray-400 uppercase font-bold">커뮤니케이션</div>
-                <a href="#" class="sidebar-item block px-5 py-3 flex items-center gap-3 transition">
-                    <span>💬</span> 문자 발송 관리
+                <div class="px-5 py-3 mt-4 text-xs text-gray-400 uppercase font-bold">문자관리</div>
+                <a href="/sms/send" class="sidebar-item${smsSendCls} block px-5 py-3 flex items-center gap-3 transition">
+                    <span>📤</span> 문자 발송
                 </a>
-                <a href="#" class="sidebar-item block px-5 py-3 flex items-center gap-3 transition">
-                    <span>📊</span> 통계 분석
+                <a href="/sms/scheduled" class="sidebar-item${smsScheduledCls} block px-5 py-3 flex items-center gap-3 transition">
+                    <span>⏰</span> 예약 발송
+                </a>
+                <a href="/sms/templates" class="sidebar-item${smsTemplatesCls} block px-5 py-3 flex items-center gap-3 transition">
+                    <span>📄</span> 템플릿 관리
+                </a>
+                <a href="/sms/history" class="sidebar-item${smsHistoryCls} block px-5 py-3 flex items-center gap-3 transition">
+                    <span>📋</span> 발송 내역
                 </a>
             </nav>
         </aside>

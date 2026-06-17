@@ -10,6 +10,10 @@ function activeMenuFromPath(pathname) {
     if (pathname === '/students') return 'students';
     if (pathname === '/lessons') return 'lessons';
     if (pathname === '/journals') return 'journals';
+    if (pathname === '/sms/send' || pathname === '/sms') return 'sms-send';
+    if (pathname === '/sms/scheduled') return 'sms-scheduled';
+    if (pathname === '/sms/templates') return 'sms-templates';
+    if (pathname === '/sms/history') return 'sms-history';
     return null;
 }
 
@@ -43,6 +47,10 @@ export default function AppShell({ children }) {
     const studentsCls = activeMenu === 'students' ? ' active-menu' : '';
     const lessonsCls = activeMenu === 'lessons' ? ' active-menu' : '';
     const journalsCls = activeMenu === 'journals' ? ' active-menu' : '';
+    const smsSendCls = activeMenu === 'sms-send' ? ' active-menu' : '';
+    const smsScheduledCls = activeMenu === 'sms-scheduled' ? ' active-menu' : '';
+    const smsTemplatesCls = activeMenu === 'sms-templates' ? ' active-menu' : '';
+    const smsHistoryCls = activeMenu === 'sms-history' ? ' active-menu' : '';
 
     const sidebarWidth = hydrated && collapsed
         ? 'w-0 min-w-0 overflow-hidden'
@@ -78,13 +86,19 @@ export default function AppShell({ children }) {
                     <Link href="/journals" className={`sidebar-item${journalsCls} block px-5 py-3 flex items-center gap-3 transition no-underline text-white`}>
                         <span>📝</span> 일지 조회
                     </Link>
-                    <div className="px-5 py-3 mt-4 text-xs text-gray-400 uppercase font-bold">커뮤니케이션</div>
-                    <a href="#" className="sidebar-item block px-5 py-3 flex items-center gap-3 transition no-underline text-white">
-                        <span>💬</span> 문자 발송 관리
-                    </a>
-                    <a href="#" className="sidebar-item block px-5 py-3 flex items-center gap-3 transition no-underline text-white">
-                        <span>📊</span> 통계 분석
-                    </a>
+                    <div className="px-5 py-3 mt-4 text-xs text-gray-400 uppercase font-bold">문자관리</div>
+                    <Link href="/sms/send" className={`sidebar-item${smsSendCls} block px-5 py-3 flex items-center gap-3 transition no-underline text-white`}>
+                        <span>📤</span> 문자 발송
+                    </Link>
+                    <Link href="/sms/scheduled" className={`sidebar-item${smsScheduledCls} block px-5 py-3 flex items-center gap-3 transition no-underline text-white`}>
+                        <span>⏰</span> 예약 발송
+                    </Link>
+                    <Link href="/sms/templates" className={`sidebar-item${smsTemplatesCls} block px-5 py-3 flex items-center gap-3 transition no-underline text-white`}>
+                        <span>📄</span> 템플릿 관리
+                    </Link>
+                    <Link href="/sms/history" className={`sidebar-item${smsHistoryCls} block px-5 py-3 flex items-center gap-3 transition no-underline text-white`}>
+                        <span>📋</span> 발송 내역
+                    </Link>
                 </nav>
             </aside>
 

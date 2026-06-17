@@ -11,7 +11,8 @@
     "next": "^15.5.19",
     "pg": "^8.13.0",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "solapi": "^6.0.1"
   },
   "scripts": {
     "dev": "next dev --port 3000",
@@ -21,7 +22,9 @@
     "ddl": "node scripts/run-ddl.js",
     "migrate": "node scripts/run-migrate.js",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "sms:test": "node scripts/send-sms-test.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
