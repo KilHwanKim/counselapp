@@ -161,7 +161,7 @@
     background: #dc2626;
 }
 
-.lessons-page .color-option {
+.color-option {
     width: 32px;
     height: 32px;
     border-radius: 9999px;
@@ -171,11 +171,11 @@
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-.lessons-page .color-option:hover {
+.color-option:hover {
     transform: scale(1.06);
 }
 
-.lessons-page .color-option.active {
+.color-option.active {
     border-color: #111827;
     box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.12);
 }
