@@ -34,8 +34,28 @@ export function mountIndexPage() {
     const makeupStudentName = document.getElementById('makeupStudentName');
     const makeupStudentId = document.getElementById('makeupStudentId');
     const makeupPickStudent = document.getElementById('makeupPickStudent');
-    const makeupStartTime = document.getElementById('makeupStartTime');
-    const makeupEndTime = document.getElementById('makeupEndTime');
+    const makeupStartHour = document.getElementById('makeupStartHour');
+    const makeupStartMin = document.getElementById('makeupStartMin');
+    const makeupEndHour = document.getElementById('makeupEndHour');
+    const makeupEndMin = document.getElementById('makeupEndMin');
+    const MAKEUP_HOUR_OPTIONS = [];
+    for (let h = 9; h <= 18; h++) MAKEUP_HOUR_OPTIONS.push(h);
+    const MAKEUP_MIN_OPTIONS = [0, 10, 20, 30, 40, 50];
+    function pad2(n) { return (n < 10 ? '0' + n : '' + n); }
+    function fillMakeupHourMinSelects(startHHMM, endHHMM) {
+        const s = (startHHMM || '14:00').split(':').map(Number);
+        const e = (endHHMM || '15:00').split(':').map(Number);
+        makeupStartHour.innerHTML = MAKEUP_HOUR_OPTIONS.map((h) => '<option value="' + h + '"' + (h === s[0] ? ' selected' : '') + '>' + h + '</option>').join('');
+        makeupStartMin.innerHTML = MAKEUP_MIN_OPTIONS.map((m) => '<option value="' + m + '"' + (m === s[1] ? ' selected' : '') + '>' + pad2(m) + '</option>').join('');
+        makeupEndHour.innerHTML = MAKEUP_HOUR_OPTIONS.map((h) => '<option value="' + h + '"' + (h === e[0] ? ' selected' : '') + '>' + h + '</option>').join('');
+        makeupEndMin.innerHTML = MAKEUP_MIN_OPTIONS.map((m) => '<option value="' + m + '"' + (m === e[1] ? ' selected' : '') + '>' + pad2(m) + '</option>').join('');
+    }
+    function getMakeupStartTime() {
+        return pad2(parseInt(makeupStartHour.value, 10)) + ':' + pad2(parseInt(makeupStartMin.value, 10));
+    }
+    function getMakeupEndTime() {
+        return pad2(parseInt(makeupEndHour.value, 10)) + ':' + pad2(parseInt(makeupEndMin.value, 10));
+    }
     const makeupFormError = document.getElementById('makeupFormError');
     const makeupSubmitBtn = document.getElementById('makeupSubmitBtn');
     const journalModal = document.getElementById('journalModal');
@@ -162,8 +182,7 @@ export function mountIndexPage() {
         makeupStudentName.placeholder = '학생 선택';
         makeupFormError.classList.add('hidden');
         makeupFormError.textContent = '';
-        makeupStartTime.value = '14:00';
-        makeupEndTime.value = '15:00';
+        fillMakeupHourMinSelects('14:00', '15:00');
     }
 
     function openMakeupModal() {
@@ -199,16 +218,13 @@ export function mountIndexPage() {
             return;
         }
 
-        const startRaw = makeupStartTime.value;
-        const endRaw = makeupEndTime.value;
-        if (!startRaw) {
+        const startTime = getMakeupStartTime();
+        const endTime = getMakeupEndTime();
+        if (!makeupStartHour.value) {
             makeupFormError.textContent = '시작 시간을 입력해 주세요.';
             makeupFormError.classList.remove('hidden');
             return;
         }
-
-        const startTime = startRaw.slice(0, 5);
-        const endTime = endRaw ? endRaw.slice(0, 5) : '';
 
         makeupSubmitBtn.disabled = true;
         fetch('/api/actual-lessons', {

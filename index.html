@@ -123,15 +123,23 @@
                             <button type="button" id="makeupPickStudent" class="shrink-0 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700">학생 선택</button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <label class="block">
-                            <span class="mb-1.5 block text-sm font-semibold text-gray-700">시작</span>
-                            <input type="time" id="makeupStartTime" required class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
-                        </label>
-                        <label class="block">
-                            <span class="mb-1.5 block text-sm font-semibold text-gray-700">종료</span>
-                            <input type="time" id="makeupEndTime" class="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100">
-                        </label>
+                    <div>
+                        <span class="mb-1.5 block text-sm font-semibold text-gray-700">시작 시간</span>
+                        <div class="flex items-center gap-2">
+                            <select id="makeupStartHour" class="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"></select>
+                            <span class="text-gray-500">시</span>
+                            <select id="makeupStartMin" class="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"></select>
+                            <span class="text-gray-500">분</span>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="mb-1.5 block text-sm font-semibold text-gray-700">끝나는 시간</span>
+                        <div class="flex items-center gap-2">
+                            <select id="makeupEndHour" class="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"></select>
+                            <span class="text-gray-500">시</span>
+                            <select id="makeupEndMin" class="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100"></select>
+                            <span class="text-gray-500">분</span>
+                        </div>
                     </div>
                     <p class="text-xs text-gray-400">취소된 시간대는 겹쳐도 등록할 수 있습니다. 예정 수업과 겹치면 등록되지 않습니다.</p>
                     <p id="makeupFormError" class="hidden text-sm font-medium text-red-600"></p>

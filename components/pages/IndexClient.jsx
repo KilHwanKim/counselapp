@@ -122,15 +122,23 @@ export default function IndexClient() {
                                     <button type="button" id="makeupPickStudent" className="shrink-0 rounded-xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-700">학생 선택</button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <label className="block">
-                                    <span className="mb-1.5 block text-sm font-semibold text-gray-700">시작</span>
-                                    <input type="time" id="makeupStartTime" required className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
-                                </label>
-                                <label className="block">
-                                    <span className="mb-1.5 block text-sm font-semibold text-gray-700">종료</span>
-                                    <input type="time" id="makeupEndTime" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
-                                </label>
+                            <div>
+                                <span className="mb-1.5 block text-sm font-semibold text-gray-700">시작 시간</span>
+                                <div className="flex items-center gap-2">
+                                    <select id="makeupStartHour" className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+                                    <span className="text-gray-500">시</span>
+                                    <select id="makeupStartMin" className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+                                    <span className="text-gray-500">분</span>
+                                </div>
+                            </div>
+                            <div>
+                                <span className="mb-1.5 block text-sm font-semibold text-gray-700">끝나는 시간</span>
+                                <div className="flex items-center gap-2">
+                                    <select id="makeupEndHour" className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+                                    <span className="text-gray-500">시</span>
+                                    <select id="makeupEndMin" className="flex-1 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-800 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
+                                    <span className="text-gray-500">분</span>
+                                </div>
                             </div>
                             <p className="text-xs text-gray-400">취소된 시간대는 겹쳐도 등록할 수 있습니다. 예정 수업과 겹치면 등록되지 않습니다.</p>
                             <p id="makeupFormError" className="hidden text-sm font-medium text-red-600" />
