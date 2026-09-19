@@ -71,7 +71,7 @@ alwaysApply: true
 - **서로 다른 타입을 `COALESCE`·`UNION`·`ORDER BY`에 섞지 말 것.**  
   예: `COALESCE(l.start_time, to_char(al.start_time, 'HH24:MI'))`
 - 정기 수업: `actual_lessons.lesson_id` + `lessons` 조인. 보강: `is_makeup = true`, `lesson_id` NULL, `student_id`·시간 컬럼 사용.
-- `actual_lessons` 월별 생성은 Cron·`POST`만 (`project.mdc` 참고). `GET /api/actual-lessons`는 sync 하지 않는다.
+- `actual_lessons` 정기 행은 `GET /api/actual-lessons` 조회 시 생성 (Cron 없음). 이번 달 ~ 12개월 뒤 달만, 오늘 이후 날짜 위주로 생성하며 시간·학생은 NULL(템플릿을 따라감). 개별 날짜는 삭제하지 말고 `status='cancelled'`로 처리 (삭제하면 다음 조회 때 재생성됨).
 - 스키마 변경 시 **새 `sql/0xx_*.sql`** 추가; 기존 적용 파일은 수정하지 않는다.
 
 ### API·프론트

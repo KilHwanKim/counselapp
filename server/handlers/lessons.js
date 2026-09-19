@@ -2,8 +2,8 @@ import { neon } from '@neondatabase/serverless';
 import {
   snapshotPastActualLessonsForLesson,
   deleteFutureActualLessonsOnOldSchedule,
-  resyncActualLessonsAfterTemplateChange,
-  syncActualLessonsForMonth,
+  catchUpCurrentMonthActualLessons,
+  seoulToday,
 } from './actual-lessons.js';
 
 if (typeof process !== 'undefined' && !process.env.VERCEL) {
@@ -147,12 +147,16 @@ export default async function handler(req, res) {
         `;
         const oldLesson = oldRows && oldRows[0] ? oldRows[0] : null;
         if (oldLesson) {
+          // 변경 전 템플릿 기준으로 이번 달 지난 날짜를 채운 뒤 과거 행에 시간·학생 고정
+          await catchUpCurrentMonthActualLessons(sql);
           await snapshotPastActualLessonsForLesson(sql, editingId, oldLesson);
           if (oldLesson.day_of_week !== dayOfWeek) {
             await deleteFutureActualLessonsOnOldSchedule(sql, editingId, oldLesson.day_of_week);
           }
         }
 
+        // 미래 행은 시간·학생을 복사하지 않으므로 템플릿 수정이 그대로 반영된다.
+        // 새 요일의 행은 다음 조회 시 생성된다.
         await sql`
           UPDATE lessons
           SET student_id = ${studentId}, day_of_week = ${dayOfWeek}, start_time = ${startTime},
@@ -160,18 +164,17 @@ export default async function handler(req, res) {
           WHERE id = ${editingId}
         `;
 
-        if (oldLesson && oldLesson.day_of_week !== dayOfWeek) {
-          await resyncActualLessonsAfterTemplateChange(sql);
-        }
-
         return res.status(200).json({ ok: true, id: editingId });
       }
 
       const existing = await sql`
-        SELECT id FROM lessons WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
+        SELECT id, student_id, day_of_week, start_time, end_time
+        FROM lessons WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
       `;
       if (existing && existing.length > 0) {
         const lessonId = existing[0].id;
+        await catchUpCurrentMonthActualLessons(sql);
+        await snapshotPastActualLessonsForLesson(sql, lessonId, existing[0]);
         await sql`
           UPDATE lessons SET student_id = ${studentId}, end_time = ${endTime}, color = ${color}, updated_at = NOW()
           WHERE day_of_week = ${dayOfWeek} AND start_time = ${startTime}
@@ -184,10 +187,7 @@ export default async function handler(req, res) {
           RETURNING id
         `;
         const lessonId = inserted && inserted[0] ? inserted[0].id : null;
-        if (lessonId) {
-          const now = new Date();
-          await syncActualLessonsForMonth(sql, now.getFullYear(), now.getMonth() + 1);
-        }
+        // 실제 수업 행은 달력 조회 시 오늘 이후 날짜부터 생성된다
         return res.status(200).json({ ok: true, id: lessonId });
       }
     }
@@ -205,11 +205,13 @@ export default async function handler(req, res) {
       `;
       if (existing && existing.length > 0) {
         const lessonId = existing[0].id;
+        const today = seoulToday();
+        await catchUpCurrentMonthActualLessons(sql);
         await snapshotPastActualLessonsForLesson(sql, lessonId, existing[0]);
         await sql`
           DELETE FROM actual_lessons
           WHERE lesson_id = ${lessonId}
-            AND lesson_date >= CURRENT_DATE
+            AND lesson_date >= ${today}::date
             AND COALESCE(is_makeup, false) = false
         `;
         await sql`

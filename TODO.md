@@ -26,35 +26,27 @@
 
 ---
 
-## A. 운영 · 배포 (Vercel Cron)
+## A. 운영 · 배포 (조회 시 생성)
 
-매월 1일 UTC Cron으로 **당월** `actual_lessons` 생성 (`/api/cron/sync-actual-lessons`).
+Cron은 제거됨. `GET /api/actual-lessons?year&month` 조회 시 그 달 정기 `actual_lessons`를 생성 (`syncActualLessonsForMonth`).
 
-- [ ] Vercel Environment Variables 확인
-  - [ ] `POSTGRES_URL` 또는 `DATABASE_URL`
-  - [ ] `CRON_SECRET`
-- [ ] Vercel **Settings → Cron Jobs**에 경로·스케줄 등록 확인
-  - 경로: `/api/cron/sync-actual-lessons`
-  - 스케줄: `0 0 1 * *` (`vercel.json`)
-- [ ] 수동 호출 테스트
-  ```bash
-  curl -s "https://<프로젝트>.vercel.app/api/cron/sync-actual-lessons" \
-    -H "Authorization: Bearer <CRON_SECRET>"
-  ```
-  - [ ] 응답 `{"ok":true,"year":...,"month":...,"inserted":...}` 확인
-  - [ ] `401` → `CRON_SECRET` 불일치 / 미설정
-  - [ ] `503` → DB URL 등 환경 변수 문제
-- [ ] Vercel **Logs**에서 `GET /api/cron/sync-actual-lessons` 200 기록 확인
-- [ ] (선택) 한국 시간 기준 실행 시각에 맞게 `vercel.json` `schedule` 조정 (Cron은 UTC)
-- [x] 생성 규칙 수정 (2026-05-30): **Cron 당월** + `POST`만 sync. `GET`·`lessons` POST에서 sync 제거 (달력 탐색으로 12월까지 쌓이던 버그 수정). 미래 달 정리: `node scripts/cleanup-future-actual-lessons.js`
+- 생성 대상 달: **이번 달 ~ 12개월 뒤** (과거 달·먼 미래 달은 조회만)
+- 생성 대상 날짜: 오늘(Asia/Seoul) 이후. 지난 날짜는 템플릿이 그날 이후 수정되지 않은 경우만 생성 (소급 방지)
+- 정기 행은 `start_time`/`end_time`/`student_id`를 NULL로 생성 → 템플릿 수정이 미래 행에 반영됨
+- 템플릿 수정·삭제 직전 `catchUpCurrentMonthActualLessons`로 이번 달 지난 날짜를 채운 뒤 과거 행 스냅샷
+- 개별 날짜는 삭제하지 않고 `status='cancelled'` (삭제하면 다음 조회 때 재생성)
+
+- [ ] `npm run migrate`로 `sql/018_actual_lessons_future_follow_template.sql` 적용 (미래 행 옛 복사값 NULL 처리)
+- [ ] Vercel Environment Variables 확인: `POSTGRES_URL` 또는 `DATABASE_URL` (`CRON_SECRET`은 불필요)
+- [ ] 다음 달 달력 조회 시 수업 표시 / 수업 수정·삭제 후 재조회 반영 확인
+- [x] (이전 이력) 생성 규칙 수정 (2026-05-30): **Cron 당월** + `POST`만 sync. `GET`·`lessons` POST에서 sync 제거 (달력 탐색으로 12월까지 쌓이던 버그 수정). 미래 달 정리: `node scripts/cleanup-future-actual-lessons.js`
 - [x] (선택) Neon 2026-06~07 `actual_lessons` 확인 (2026-05-30): 6월 110건·`first_created` 12:11 UTC대(여러 GET), 7월 115건·`13:13:39` 일괄(7월 달력 1회 sync 추정). 보강 0건. 재실행: `node scripts/check-actual-lessons-jun-jul.js`
 
 **관련 파일**
 
-- `api/cron/sync-actual-lessons.js`
-- `api/actual-lessons.js` (`syncActualLessonsForMonth`)
-- `vercel.json`
-- `server.js` (로컬 동일 경로)
+- `server/handlers/actual-lessons.js` (`syncActualLessonsForMonth`)
+- `server/handlers/lessons.js` (수정·삭제 시 catch-up·스냅샷)
+- `sql/018_actual_lessons_future_follow_template.sql`
 
 ---
 
@@ -142,10 +134,12 @@
 
 ## 수동 테스트 체크리스트
 
-### Cron
+### 실제 수업 생성 (조회 시)
 
-- [ ] 로컬: `.env`에 `CRON_SECRET` 설정 후 `GET /api/cron/sync-actual-lessons` + Bearer 헤더
-- [ ] 프로덕션: curl 응답 `ok: true`, DB에 해당 월 `actual_lessons` 행 증가
+- [ ] 다음 달 달력 조회 시 정기 수업 표시, 13개월 뒤·과거 달은 새로 생성되지 않음
+- [ ] 수업 신규 등록 후 이번 달 지난 날짜에 행이 생기지 않음
+- [ ] 수업 삭제 후 해당 달 재조회 시 미래 행이 사라지고 재생성되지 않음
+- [ ] 시간·학생 수정 시 미래 행에 반영, 과거 행은 변경 전 값 유지
 
 ### 일지
 
@@ -173,16 +167,14 @@
 | 반복 수업 | `lessons.html`, `api/lessons.js` |
 | 실제 수업 | `api/actual-lessons.js` |
 | 일지 API | `api/lesson-journals.js` |
-| 월간 Cron | `api/cron/sync-actual-lessons.js` |
 | 로컬 서버 | `server.js` |
-| 배포·Cron 스케줄 | `vercel.json` |
 | DB 스키마 | `sql/*.sql` |
 
 ---
 
 ## 추천 작업 순서
 
-1. **A** — Vercel Cron 프로덕션 검증  
+1. **A** — 조회 시 생성 방식 마이그레이션·프로덕션 검증  
 2. **B** — 일지 기능 테스트 · UI/레거시 정리  
 3. **C** — 보강 등록 설계 → 구현  
 4. **D** — 문서·git 정리  

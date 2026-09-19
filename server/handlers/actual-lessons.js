@@ -141,25 +141,59 @@ async function findDateOverlapError(sql, lessonDate, startTime, endTimeNorm, exc
   return null;
 }
 
-/** Generate actual_lessons rows for one calendar month from recurring lessons (templates). */
+/** 오늘 날짜 (Asia/Seoul, YYYY-MM-DD). DB CURRENT_DATE(UTC)와 달리 한국 날짜 기준 */
+export function seoulToday(from = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(from);
+}
+
+/** 조회 시 자동 생성하는 달: 이번 달 ~ 12개월 뒤 (과거 달·먼 미래 달은 생성하지 않음) */
+const SYNC_MONTHS_AHEAD = 12;
+
+function isSyncableMonth(year, month, today) {
+  const [ty, tm] = today.split('-').map(Number);
+  const diff = (year - ty) * 12 + (month - tm);
+  return diff >= 0 && diff <= SYNC_MONTHS_AHEAD;
+}
+
+/**
+ * Generate actual_lessons rows for one calendar month from recurring lessons (templates).
+ * - 정기 행은 시간·학생을 복사하지 않는다(NULL) → 템플릿 수정이 미래 행에 그대로 반영된다.
+ * - 오늘 이전 날짜는 템플릿이 그날 이후 수정되지 않은 경우에만 생성한다 (소급 생성 방지).
+ * - 생성 가능한 달(이번 달 ~ 12개월 뒤)이 아니면 아무것도 하지 않는다.
+ */
 export async function syncActualLessonsForMonth(sql, year, month) {
+  const today = seoulToday();
+  if (!isSyncableMonth(year, month, today)) return { inserted: 0 };
+
   const lastDay = new Date(year, month, 0).getDate();
   const fromDate = `${year}-${String(month).padStart(2, '0')}-01`;
   const toDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
   const result = await sql`
-    INSERT INTO actual_lessons (lesson_id, lesson_date, start_time, end_time, student_id)
-    SELECT l.id, gs.day::date,
-           l.start_time::time,
-           CASE WHEN l.end_time IS NOT NULL AND TRIM(l.end_time) <> '' THEN l.end_time::time ELSE NULL END,
-           l.student_id
+    INSERT INTO actual_lessons (lesson_id, lesson_date)
+    SELECT l.id, gs.day::date
     FROM lessons l
     CROSS JOIN generate_series(${fromDate}::date, ${toDate}::date, interval '1 day') AS gs(day)
     WHERE (CASE WHEN l.day_of_week = 7 THEN 0 ELSE l.day_of_week END) = EXTRACT(DOW FROM gs.day)::int
+      AND (
+        gs.day::date >= ${today}::date
+        OR (l.updated_at AT TIME ZONE 'Asia/Seoul')::date <= gs.day::date
+      )
     ON CONFLICT (lesson_id, lesson_date) DO NOTHING
     RETURNING id
   `;
   return { inserted: result?.length ?? 0 };
+}
+
+/** 템플릿 수정·삭제 직전 호출: 이번 달 지난 날짜 중 빠진 정기 행을 변경 전 템플릿 기준으로 채운다 */
+export async function catchUpCurrentMonthActualLessons(sql) {
+  const [year, month] = seoulToday().split('-').map(Number);
+  return syncActualLessonsForMonth(sql, year, month);
 }
 
 /** 과거 실제 수업에 변경 전 템플릿 시간·학생을 고정 (이미 스냅샷 있으면 유지) */
@@ -170,6 +204,7 @@ export async function snapshotPastActualLessonsForLesson(sql, lessonId, oldLesso
   const studentId = oldLesson.student_id;
   if (!startTime || !studentId) return;
 
+  const today = seoulToday();
   await sql`
     UPDATE actual_lessons
     SET
@@ -177,31 +212,23 @@ export async function snapshotPastActualLessonsForLesson(sql, lessonId, oldLesso
       end_time = COALESCE(end_time, ${endTime}::time),
       student_id = COALESCE(student_id, ${studentId})
     WHERE lesson_id = ${lessonId}
-      AND lesson_date < CURRENT_DATE
+      AND lesson_date < ${today}::date
       AND COALESCE(is_makeup, false) = false
   `;
 }
 
-/** 요일 변경 시 오늘 이후·구 요일에 해당하는 정기 actual_lessons만 제거 */
+/** 요일 변경 시 오늘 이후·구 요일에 해당하는 정기 actual_lessons만 제거 (새 요일 행은 조회 시 생성) */
 export async function deleteFutureActualLessonsOnOldSchedule(sql, lessonId, oldDayOfWeek) {
+  const today = seoulToday();
   const result = await sql`
     DELETE FROM actual_lessons
     WHERE lesson_id = ${lessonId}
-      AND lesson_date >= CURRENT_DATE
+      AND lesson_date >= ${today}::date
       AND COALESCE(is_makeup, false) = false
       AND (CASE WHEN ${oldDayOfWeek} = 7 THEN 0 ELSE ${oldDayOfWeek} END) = EXTRACT(DOW FROM lesson_date)::int
     RETURNING id
   `;
   return { deleted: result?.length ?? 0 };
-}
-
-/** 템플릿 요일 변경 후 당월·익월 actual_lessons 보충 생성 */
-export async function resyncActualLessonsAfterTemplateChange(sql) {
-  const now = new Date();
-  for (let offset = 0; offset < 2; offset++) {
-    const date = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-    await syncActualLessonsForMonth(sql, date.getFullYear(), date.getMonth() + 1);
-  }
 }
 
 async function handleMakeupPost(sql, body, res) {
@@ -265,6 +292,12 @@ export default async function handler(req, res) {
         fromDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`;
         const lastDay = new Date(targetYear, targetMonth, 0).getDate();
         toDate = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      }
+      // 조회하는 달(이번 달 ~ 12개월 뒤)의 정기 수업을 템플릿에서 채운다 (멱등)
+      try {
+        await syncActualLessonsForMonth(sql, targetYear, targetMonth);
+      } catch (syncErr) {
+        console.error('actual_lessons sync failed:', syncErr);
       }
       const rows = await sql`
         SELECT al.id, al.lesson_id, al.lesson_date, al.created_at, al.status, al.is_makeup,
