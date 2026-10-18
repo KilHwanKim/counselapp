@@ -8,7 +8,7 @@ import { installStudentPickerGlobal } from '@/lib/student-picker.js';
 export default function IndexClient() {
     const mount = useCallback(() => {
         installStudentPickerGlobal();
-        mountIndexPage();
+        return mountIndexPage();
     }, []);
 
     return (

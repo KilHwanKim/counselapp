@@ -4,6 +4,7 @@ import { getLessonColor } from '../utils/color.js';
 import { getLessonTimeText, compareLessons } from '../utils/lesson.js';
 import { JOURNAL_AMOUNT_OPTIONS } from '../constants/journal.js';
 import { mountJournalAttachmentPanel } from '../journal-attachment-panel.js';
+import { writeJournalDraft, removeJournalDraft, promptRestoreJournalDraft } from '../utils/journal-draft.js';
 
 import { initAppShell } from '../app-header.js';
 
@@ -32,6 +33,70 @@ export function mountJournalsPage() {
     let filteredLessons = [];
     let selectedLessonId = null;
     let journalAttachmentPanel = null;
+
+    // ---- 작성 중 내용 보호 (변경 확인 · 뒤로가기 · 이탈 경고 · 임시저장) ----
+    const LEAVE_CONFIRM_MESSAGE = '작성 중인 일지 내용이 있습니다. 저장하지 않고 이동할까요?';
+    let detailLessonId = null;          // 상세에 표시 중인 수업
+    let detailInitialSnapshot = '';     // 상세를 그렸을 때의 입력값 (변경 여부 기준)
+    // 뒤로가기 가로채기용 히스토리 칸 추가 여부 (새로고침 전에 추가한 칸 위에 있으면 이어받음)
+    let guardHistoryPushed = !!(window.history.state && window.history.state.journalDetailGuard);
+    let ignoreNextPopState = false;
+    let prevMonthValue = monthFilter.value;
+    // 페이지 언마운트 시(또는 개발모드 Strict Mode 재마운트 시) 리스너 정리용
+    const listenerAbort = new AbortController();
+    const listenerOpts = { signal: listenerAbort.signal };
+
+    function getDetailFormValues() {
+        const val = (id) => {
+            const el = document.getElementById(id);
+            return el ? el.value || '' : '';
+        };
+        return {
+            lesson_content: val('journalDetailLessonContent'),
+            amount_type: val('journalDetailAmountType'),
+            lesson_time: val('journalDetailLessonTime'),
+            approval_number: val('journalDetailApprovalNumber'),
+            parent_consultation: val('journalDetailParentConsultation'),
+            homework: val('journalDetailHomework'),
+        };
+    }
+
+    function isDetailDirty() {
+        if (!detailLessonId) return false;
+        if (journalAttachmentPanel && journalAttachmentPanel.hasPendingFiles()) return true;
+        return JSON.stringify(getDetailFormValues()) !== detailInitialSnapshot;
+    }
+
+    // 작성 중이면 확인. 진행해도 되면 true (뒤로가기용 히스토리 칸도 정리)
+    function confirmLeaveDetail() {
+        if (isDetailDirty() && !confirm(LEAVE_CONFIRM_MESSAGE)) return false;
+        dropHistoryGuard();
+        return true;
+    }
+
+    function pushHistoryGuard() {
+        if (guardHistoryPushed) return;
+        window.history.pushState({ journalDetailGuard: true }, '');
+        guardHistoryPushed = true;
+    }
+
+    function dropHistoryGuard() {
+        if (!guardHistoryPushed) return;
+        guardHistoryPushed = false;
+        ignoreNextPopState = true;
+        window.history.back();
+    }
+
+    function onDetailInput() {
+        if (!detailLessonId) return;
+        const values = getDetailFormValues();
+        if (JSON.stringify(values) === detailInitialSnapshot) {
+            removeJournalDraft(detailLessonId);
+        } else {
+            writeJournalDraft(detailLessonId, values);
+        }
+        if (isDetailDirty()) pushHistoryGuard();
+    }
 
     function getUnifiedLessonStatusMeta(lesson) {
         const cancelled = String(lesson.status || 'scheduled').toLowerCase() === 'cancelled';
@@ -109,7 +174,10 @@ export function mountJournalsPage() {
 
         journalList.querySelectorAll('.journal-list-row').forEach((row) => {
             row.addEventListener('click', () => {
-                selectedLessonId = parseInt(row.getAttribute('data-id'), 10);
+                const nextId = parseInt(row.getAttribute('data-id'), 10);
+                if (nextId === selectedLessonId) return;
+                if (!confirmLeaveDetail()) return;
+                selectedLessonId = nextId;
                 renderList();
                 renderDetail();
             });
@@ -119,6 +187,8 @@ export function mountJournalsPage() {
     function renderDetail() {
         const lesson = filteredLessons.find((item) => item.id === selectedLessonId);
         if (!lesson) {
+            detailLessonId = null;
+            detailInitialSnapshot = '';
             detailTitle.textContent = '일지를 선택하세요';
             detailSubtitle.textContent = '좌측 목록에서 수업을 선택하면 상세 내용이 표시됩니다.';
             detailStatusBadge.className = 'hidden rounded-full px-3 py-1 text-xs font-semibold';
@@ -213,6 +283,21 @@ export function mountJournalsPage() {
         if (parentEl) parentEl.value = journal.parent_consultation || '';
         if (homeworkEl) homeworkEl.value = journal.homework || '';
 
+        // 변경 여부 기준값 (임시저장 복원 전에 잡아야 복원 내용이 "변경"으로 잡힘)
+        const isNewDetail = detailLessonId !== lesson.id;
+        detailLessonId = lesson.id;
+        detailInitialSnapshot = JSON.stringify(getDetailFormValues());
+        // 같은 수업을 다시 그릴 때(저장 후 재조회 등)는 묻지 않음
+        const draftValues = isNewDetail ? promptRestoreJournalDraft(lesson.id, detailInitialSnapshot) : null;
+        if (draftValues) {
+            if (contentEl) contentEl.value = draftValues.lesson_content || '';
+            if (amountEl && JOURNAL_AMOUNT_OPTIONS.some((o) => o.value === draftValues.amount_type)) amountEl.value = draftValues.amount_type;
+            if (timeEl) timeEl.value = draftValues.lesson_time || '';
+            if (approvalEl) approvalEl.value = draftValues.approval_number || '';
+            if (parentEl) parentEl.value = draftValues.parent_consultation || '';
+            if (homeworkEl) homeworkEl.value = draftValues.homework || '';
+        }
+
         const attachRoot = document.getElementById('journalDetailAttachmentRoot');
         if (journalAttachmentPanel) {
             journalAttachmentPanel.destroy();
@@ -268,7 +353,10 @@ export function mountJournalsPage() {
                     }
                 }
 
+                removeJournalDraft(lesson.id);
+                dropHistoryGuard();
                 selectedLessonId = lesson.id;
+                detailInitialSnapshot = JSON.stringify(getDetailFormValues());
                 await loadMonthLessons();
                 alert(!hasWritten ? '일지가 삭제되었습니다.' : '일지가 저장되었습니다.');
             } catch (err) {
@@ -321,12 +409,21 @@ export function mountJournalsPage() {
     }
 
     resetFiltersBtn.addEventListener('click', () => {
+        if (!confirmLeaveDetail()) return;
         journalStudentId.value = '';
         journalStudentName.value = '';
         journalStudentName.placeholder = '전체 학생';
         monthFilter.value = currentMonthValue;
+        prevMonthValue = monthFilter.value;
         loadMonthLessons();
-    });
+    }, listenerOpts);
+
+    // 학생 선택 팝업이 열리기 전에 확인 (capture라 bindButton 핸들러보다 먼저 실행)
+    journalPickStudent.addEventListener('click', (event) => {
+        if (confirmLeaveDetail()) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }, { capture: true, signal: listenerAbort.signal });
 
     StudentPicker.bindButton(journalPickStudent, {
         nameEl: journalStudentName,
@@ -336,15 +433,65 @@ export function mountJournalsPage() {
     });
 
     journalClearStudent.addEventListener('click', () => {
+        if (!confirmLeaveDetail()) return;
         journalStudentId.value = '';
         journalStudentName.value = '';
         journalStudentName.placeholder = '전체 학생';
         applyFilters();
-    });
+    }, listenerOpts);
 
-    monthFilter.addEventListener('change', loadMonthLessons);
+    monthFilter.addEventListener('change', () => {
+        if (!confirmLeaveDetail()) {
+            monthFilter.value = prevMonthValue;
+            return;
+        }
+        prevMonthValue = monthFilter.value;
+        loadMonthLessons();
+    }, listenerOpts);
+
+    detailBody.addEventListener('input', onDetailInput, listenerOpts);
+    detailBody.addEventListener('change', onDetailInput, listenerOpts);
+
+    // 브라우저 뒤로가기: 작성 중이면 확인 → 취소 시 그대로, 확인 시 실제로 뒤로 이동
+    window.addEventListener('popstate', () => {
+        if (ignoreNextPopState) {
+            ignoreNextPopState = false;
+            return;
+        }
+        if (!guardHistoryPushed) return;
+        guardHistoryPushed = false;
+        if (isDetailDirty() && !confirm(LEAVE_CONFIRM_MESSAGE)) {
+            pushHistoryGuard();
+            return;
+        }
+        detailInitialSnapshot = JSON.stringify(getDetailFormValues());
+        window.history.back();
+    }, listenerOpts);
+
+    // 사이드바 등 링크 이동: 작성 중이면 확인 (Next Link 처리보다 먼저 가로챔)
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest ? event.target.closest('a[href]') : null;
+        if (!link || link.target === '_blank' || !isDetailDirty()) return;
+        if (confirm(LEAVE_CONFIRM_MESSAGE)) {
+            // 페이지 이동과 history.back()이 겹치지 않도록 가로채기만 해제
+            guardHistoryPushed = false;
+            detailInitialSnapshot = JSON.stringify(getDetailFormValues());
+            return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+    }, { capture: true, signal: listenerAbort.signal });
+
+    // 새로고침·탭 닫기: 작성 중이면 브라우저 기본 경고
+    window.addEventListener('beforeunload', (event) => {
+        if (!isDetailDirty()) return;
+        event.preventDefault();
+        event.returnValue = '';
+    }, listenerOpts);
 
     loadMonthLessons();
+
+    return () => listenerAbort.abort();
 }
 
 export function initJournalsPage() {

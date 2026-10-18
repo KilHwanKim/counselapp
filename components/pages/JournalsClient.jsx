@@ -8,7 +8,7 @@ import { installStudentPickerGlobal } from '@/lib/student-picker.js';
 export default function JournalsClient() {
     const mount = useCallback(() => {
         installStudentPickerGlobal();
-        mountJournalsPage();
+        return mountJournalsPage();
     }, []);
 
     return (

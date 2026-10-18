@@ -4,6 +4,7 @@ import { getLessonColor, colorWithAlpha, darkenColor } from '../utils/color.js';
 import { getLessonTimeText, compareLessonsByTime, getScheduledLessons, getCancelledLessons } from '../utils/lesson.js';
 import { JOURNAL_AMOUNT_OPTIONS } from '../constants/journal.js';
 import { mountJournalAttachmentPanel } from '../journal-attachment-panel.js';
+import { writeJournalDraft, removeJournalDraft, promptRestoreJournalDraft } from '../utils/journal-draft.js';
 
 import { initAppShell } from '../app-header.js';
 
@@ -89,6 +90,13 @@ export function mountIndexPage() {
     let lessonsByDate = {};
     let holidaysByDate = {};
     let currentJournalLesson = null;
+    let journalInitialSnapshot = '';
+    // 새로고침 전에 추가했던 히스토리 칸 위에 있으면 이어받음 (안 그러면 뒤로가기를 한 번 더 눌러야 함)
+    let journalHistoryPushed = !!(window.history.state && window.history.state.journalModal);
+    let ignoreNextJournalPopState = false;
+    // 페이지 언마운트 시(또는 개발모드 Strict Mode 재마운트 시) 리스너 정리용
+    const listenerAbort = new AbortController();
+    const listenerOpts = { signal: listenerAbort.signal };
 
     function getJournalButtonMeta(lesson) {
         const hasWritten = lesson && lesson.journal_exists != null ? !!lesson.journal_exists : false;
@@ -149,7 +157,17 @@ export function mountIndexPage() {
             journalHomework.value = journal.homework || '';
         }
 
+        // 변경 여부 판단 기준값 (임시저장 복원 전에 잡아야 복원 내용이 "변경"으로 잡힘)
+        journalInitialSnapshot = JSON.stringify(getJournalFormValues());
+        restoreJournalDraft(lesson);
+
         journalModal.classList.remove('hidden');
+
+        // 뒤로가기 시 페이지 이동 대신 모달만 닫히도록 히스토리 한 칸 추가
+        if (!journalHistoryPushed) {
+            window.history.pushState({ journalModal: true }, '');
+            journalHistoryPushed = true;
+        }
 
         if (journalAttachmentPanel && lesson && lesson.id) {
             journalAttachmentPanel.setActualLessonId(lesson.id);
@@ -159,8 +177,68 @@ export function mountIndexPage() {
 
     function closeJournalModal() {
         currentJournalLesson = null;
+        journalInitialSnapshot = '';
         journalModal.classList.add('hidden');
         resetJournalForm();
+        // 버튼/ESC로 닫은 경우 열 때 추가한 히스토리 한 칸을 되돌림
+        if (journalHistoryPushed) {
+            journalHistoryPushed = false;
+            ignoreNextJournalPopState = true;
+            window.history.back();
+        }
+    }
+
+    function isJournalModalOpen() {
+        return !journalModal.classList.contains('hidden');
+    }
+
+    function getJournalFormValues() {
+        return {
+            lesson_content: journalLessonContent.value || '',
+            amount_type: journalAmountType.value || '',
+            lesson_time: journalTime.value || '',
+            approval_number: journalApprovalNumber.value || '',
+            parent_consultation: journalParentConsultation.value || '',
+            homework: journalHomework.value || '',
+        };
+    }
+
+    function isJournalDirty() {
+        if (!isJournalModalOpen() || !currentJournalLesson) return false;
+        if (journalAttachmentPanel && journalAttachmentPanel.hasPendingFiles()) return true;
+        return JSON.stringify(getJournalFormValues()) !== journalInitialSnapshot;
+    }
+
+    function confirmDiscardJournal() {
+        return !isJournalDirty() || confirm('작성 중인 일지 내용이 있습니다. 저장하지 않고 닫을까요?');
+    }
+
+    // 닫기 버튼·배경 클릭·ESC용: 작성 중이면 확인 후 닫음
+    function requestCloseJournalModal() {
+        if (!confirmDiscardJournal()) return;
+        closeJournalModal();
+    }
+
+    function saveJournalDraft() {
+        if (!currentJournalLesson || !currentJournalLesson.id || !isJournalModalOpen()) return;
+        const values = getJournalFormValues();
+        // 열었을 때와 같으면 임시저장할 필요 없음
+        if (JSON.stringify(values) === journalInitialSnapshot) {
+            removeJournalDraft(currentJournalLesson.id);
+            return;
+        }
+        writeJournalDraft(currentJournalLesson.id, values);
+    }
+
+    function restoreJournalDraft(lesson) {
+        const v = promptRestoreJournalDraft(lesson && lesson.id, journalInitialSnapshot);
+        if (!v) return;
+        journalLessonContent.value = v.lesson_content || '';
+        if (JOURNAL_AMOUNT_OPTIONS.some((o) => o.value === v.amount_type)) journalAmountType.value = v.amount_type;
+        journalTime.value = v.lesson_time || '';
+        journalApprovalNumber.value = v.approval_number || '';
+        journalParentConsultation.value = v.parent_consultation || '';
+        journalHomework.value = v.homework || '';
     }
 
     function updateDayActionButtons(scheduledItems, cancelledItems) {
@@ -553,8 +631,41 @@ export function mountIndexPage() {
         });
     }
 
-    journalModalBackdrop.addEventListener('click', closeJournalModal);
-    journalModalCloseBtn.addEventListener('click', closeJournalModal);
+    journalModalBackdrop.addEventListener('click', requestCloseJournalModal, listenerOpts);
+    journalModalCloseBtn.addEventListener('click', requestCloseJournalModal, listenerOpts);
+    journalForm.addEventListener('input', saveJournalDraft, listenerOpts);
+    journalForm.addEventListener('change', saveJournalDraft, listenerOpts);
+
+    // 브라우저 뒤로가기: 열 때 추가한 히스토리 칸이 빠지면서 popstate 발생 → 모달만 닫음
+    window.addEventListener('popstate', () => {
+        if (ignoreNextJournalPopState) {
+            ignoreNextJournalPopState = false;
+            return;
+        }
+        if (!journalHistoryPushed) return;
+        journalHistoryPushed = false;
+        if (!isJournalModalOpen()) {
+            // 모달이 닫힌 상태에서 남은 칸이 빠진 경우: 사용자가 원래 의도한 뒤로가기를 이어서 수행
+            window.history.back();
+            return;
+        }
+        if (!confirmDiscardJournal()) {
+            // 취소: 히스토리 칸을 다시 넣고 모달 유지
+            window.history.pushState({ journalModal: true }, '');
+            journalHistoryPushed = true;
+            return;
+        }
+        closeJournalModal();
+    }, listenerOpts);
+
+    // 새로고침·탭 닫기: 작성 중이면 브라우저 기본 경고
+    window.addEventListener('beforeunload', (event) => {
+        if (!isJournalDirty()) return;
+        saveJournalDraft();
+        event.preventDefault();
+        event.returnValue = '';
+    }, listenerOpts);
+
     journalModalConfirmBtn.addEventListener('click', async () => {
         if (!currentJournalLesson) {
             closeJournalModal();
@@ -604,23 +715,24 @@ export function mountIndexPage() {
             }
 
             // 서버 join 값 반영을 위해 월 데이터 재로딩
+            removeJournalDraft(lessonId);
             await loadMonthLessons();
             closeJournalModal();
             alert(!hasWritten ? '일지가 삭제되었습니다.' : '일지가 저장되었습니다.');
         } catch (err) {
             alert(err.message || '일지 저장/수정 실패');
         }
-    });
+    }, listenerOpts);
     document.addEventListener('keydown', (event) => {
         if (event.key !== 'Escape') return;
         if (!makeupModal.classList.contains('hidden')) {
             closeMakeupModal();
             return;
         }
-        if (!journalModal.classList.contains('hidden')) {
-            closeJournalModal();
+        if (isJournalModalOpen()) {
+            requestCloseJournalModal();
         }
-    });
+    }, listenerOpts);
     resetJournalForm();
 
     makeupBtn.addEventListener('click', openMakeupModal);
@@ -671,6 +783,8 @@ export function mountIndexPage() {
     });
 
     loadMonthLessons();
+
+    return () => listenerAbort.abort();
 }
 
 export function initIndexPage() {
