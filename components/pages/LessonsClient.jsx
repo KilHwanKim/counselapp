@@ -19,7 +19,7 @@ export default function LessonsClient() {
                     <div className="flex justify-between items-end mb-4 flex-shrink-0">
                         <div>
                             <h2 className="text-xl font-bold text-gray-800">주간 수업 일정</h2>
-                            <p className="text-gray-500 text-sm">9:00 - 18:00 (높이로 시간 표시)</p>
+                            <p className="text-gray-500 text-sm">9:00 - 19:00 (높이로 시간 표시)</p>
                         </div>
                         <button type="button" id="registerBtn" className="bg-[#00c73c] text-white px-5 py-2.5 rounded-lg font-bold hover:shadow-lg transition">+ 수업 등록</button>
                     </div>

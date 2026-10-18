@@ -1,7 +1,7 @@
 :root {
     --header-height: 50px;
     --hour-height: 112px;
-    --calendar-total-height: calc(10 * var(--hour-height));
+    --calendar-total-height: calc(11 * var(--hour-height));
     --calendar-body-max-height: calc(100vh - 220px);
 }
 

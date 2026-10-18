@@ -9,7 +9,7 @@ import { initAppShell } from '../app-header.js';
 
 export function mountLessonsPage() {
     const START_HOUR = 9;
-    const END_HOUR = 18;
+    const END_HOUR = 19;
 
     let lessonsMap = {};
     const timeLabels = document.getElementById('timeLabels');
